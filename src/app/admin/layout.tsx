@@ -8,6 +8,7 @@ const NAV = [
   ["/admin", "總覽"],
   ["/admin/jobs", "掃描工作"],
   ["/admin/comments", "留言紀錄"],
+  ["/admin/music", "音樂曲庫"],
   ["/admin/settings", "設定與金鑰"],
   ["/admin/health", "健康檢查"],
 ] as const;

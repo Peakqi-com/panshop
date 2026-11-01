@@ -1,6 +1,6 @@
 /**
  * 短片分鏡：Spark 先寫腳本（鉤子、場景、旁白含語氣指令、字幕、鏡頭運動、每場用哪張圖），
- * 場景圖優先用已生成的商品圖，需要新畫面才用 Muse Image 生，並過一次忠實度品管。
+ * 場景圖優先用已生成的商品圖，需要新畫面才用 Muse Image 生。編輯面板的單場重做也走這裡。
  */
 import { z } from "zod";
 import { sparkJSON, imageEdit } from "@/lib/meta";
@@ -49,7 +49,6 @@ export async function writeStoryboard(job: Job, it: Item, a: Asset): Promise<{ s
 export async function ensureSceneImages(job: Job, it: Item, a: Asset, sb: StoryboardT, log: (m: string) => void): Promise<{ scenes: SceneWithImage[]; usd: number }> {
   const shots = a.shots ?? [];
   const pick = (k: string) => shots.find((s) => s.kind === k)?.url;
-  const refs = [...it.primaryCropUrls.slice(0, 3), ...(it.primaryCutoutUrl ? [it.primaryCutoutUrl] : [])];
   const stamp = Date.now().toString(36);
   let usd = 0;
   const scenes: SceneWithImage[] = [];
@@ -58,16 +57,8 @@ export async function ensureSceneImages(job: Job, it: Item, a: Asset, sb: Storyb
     if (!url && sc.shot !== "generate") url = pick("threeQuarter") ?? pick("lifestyle") ?? shots[0]?.url;
     if (!url || sc.shot === "generate") {
       try {
-        const prompt = [
-          `Cinematic product scene for a vertical video: ${sc.imagePrompt || sc.subtitle}.`,
-          a.brief ? `The product: ${a.brief.subject}. Material: ${a.brief.materialNotes}.` : `The product: ${it.title}.`,
-          "The product must be reproduced exactly from the reference images (same shape, color, material, parts and printed artwork); only the scene, framing and lighting change.",
-          "Realistic photography, shallow depth of field, soft directional light, portrait 9:16 framing with the product in the central area and clean space above and below for captions.",
-          "No text, letters, numbers, logos, watermarks, people or faces.",
-        ].join(" ");
-        const r = await imageEdit({ prompt, images: refs, size: "1024x1792", format: "jpeg" });
-        usd += r.usd;
-        url = await putBlob(`jobs/${job.code}/items/${stamp}/${it.code}/scene${sc.sceneNo}.jpg`, r.images[0]);
+        const r = await generateSceneImage(job, it, a, sc.sceneNo, sc.imagePrompt || sc.subtitle, stamp);
+        usd += r.usd; url = r.url;
         log(`${it.code} 場景 ${sc.sceneNo} 生成`);
       } catch (e) {
         log(`${it.code} 場景 ${sc.sceneNo} 生成失敗，改用既有圖：${(e as Error).message.slice(0, 80)}`);
@@ -77,4 +68,36 @@ export async function ensureSceneImages(job: Job, it: Item, a: Asset, sb: Storyb
     scenes.push({ ...sc, imageUrl: url });
   }
   return { scenes, usd };
+}
+
+/** 生一張場景圖：參考原片裁圖，商品要和原品一致，場景與構圖照描述 */
+export async function generateSceneImage(job: Job, it: Item, a: Asset, sceneNo: number, description: string, stamp = Date.now().toString(36)) {
+  const refs = [...it.primaryCropUrls.slice(0, 3), ...(it.primaryCutoutUrl ? [it.primaryCutoutUrl] : [])];
+  const prompt = [
+    `Cinematic product scene for a vertical video: ${description}.`,
+    a.brief ? `The product: ${a.brief.subject}. Material: ${a.brief.materialNotes}.` : `The product: ${it.title}.`,
+    "The product must be reproduced exactly from the reference images (same shape, color, material, parts and printed artwork); only the scene, framing and lighting change.",
+    "Realistic photography, shallow depth of field, soft directional light, portrait 9:16 framing with the product in the central area and clean space above and below for captions.",
+    "No text, letters, numbers, logos, watermarks, people or faces.",
+  ].join(" ");
+  const r = await imageEdit({ prompt, images: refs, size: "1024x1792", format: "jpeg" });
+  const url = await putBlob(`jobs/${job.code}/items/${stamp}/${it.code}/scene${sceneNo}.jpg`, r.images[0]);
+  return { url, usd: r.usd };
+}
+
+const SceneText = z.object({
+  narration: z.string().describe("口語旁白，繁體中文，句首可加一個方括號語氣提示；每秒約 4 個字"),
+  subtitle: z.string().describe("畫面字幕，18 字內，不含語氣提示"),
+  imagePrompt: z.string().describe("這一場畫面的英文描述（角度、距離、場景、光線），不含文字"),
+});
+
+/** 只重寫一場的文字，其他場當上下文，不動它們 */
+export async function rewriteSceneText(job: Job, it: Item, a: Asset, sb: { hook: string; scenes: { sceneNo: number; purpose: string; narration: string; durationSec: number }[] }, sceneNo: number, hint: string) {
+  const target = sb.scenes.find((s) => s.sceneNo === sceneNo);
+  if (!target) throw new Error("沒有這一場");
+  return sparkJSON({
+    schema: SceneText, name: "scene_text", effort: "low", maxTokens: 1500,
+    system: "你是台灣短影音廣告導演，只重寫指定的一場。旁白口語、具體、不浮誇，只能講資料裡有的事實，不得捏造認證、功效、規格數字與優惠；價格用自然念法；不要和其他場重複。",
+    parts: [{ text: `商品 ${it.code}：${it.title}；顏色 ${it.color}；材質 ${it.material}；價格 ${it.price != null ? `${job.currency} ${it.price}` : "未定"}；描述：${it.description}；賣點：${(a.sellingPoints ?? []).join("、")}。\n分鏡：\n${sb.scenes.map((s) => `第 ${s.sceneNo} 場（${s.purpose}）：${s.narration}`).join("\n")}\n請重寫第 ${sceneNo} 場，長度 ${target.durationSec} 秒。${hint ? `賣家的方向：${hint}` : ""}` }],
+  });
 }

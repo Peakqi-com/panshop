@@ -5,6 +5,7 @@ import type { JobPayload, ItemRow, AssetRow } from "./job-view";
 import { Lightbox, type LightboxImage } from "./lightbox";
 import { copyText } from "@/lib/copy-text";
 import { STYLES, type StyleId } from "@/lib/config";
+import { StoryboardEditor } from "./storyboard-editor";
 
 type Tab = "cards" | "reels" | "catalog";
 
@@ -13,6 +14,8 @@ export function Outputs({ data, onChange }: { data: JobPayload; onChange: () => 
   const byItem = new Map(assets.map((a) => [a.itemId, a]));
   const [tab, setTab] = useState<Tab>("cards");
   const [toast, setToast] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const editItem = items.find((i) => i._id === editId);
   const shopPath = `/s/${job.code}`;
   const producing = job.status === "producing";
   const reelsDone = assets.filter((a) => a.reelUrl).length;
@@ -26,6 +29,7 @@ export function Outputs({ data, onChange }: { data: JobPayload; onChange: () => 
 
   return (
     <section className="mt-12">
+      {editItem && <StoryboardEditor key={editItem._id} item={editItem} asset={byItem.get(editItem._id)} onChange={onChange} onClose={() => setEditId(null)} />}
       {toast && <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-stone-900 px-4 py-2 text-sm text-white shadow-lg">{toast}</div>}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -59,7 +63,8 @@ export function Outputs({ data, onChange }: { data: JobPayload; onChange: () => 
               <div key={it._id} className="overflow-hidden rounded-xl bg-black">
                 {a?.reelUrl ? <video src={a.reelUrl} poster={a.coverUrl} controls playsInline className="aspect-[9/16] w-full object-cover" />
                   : <div className={`aspect-[9/16] w-full ${producing ? "skeleton" : "bg-stone-800"}`} />}
-                <div className="flex items-center justify-between px-2 py-1.5 text-xs text-stone-300"><span>{it.code} {it.title}</span>{a?.reelUrl && <a href={a.reelUrl} download className="underline">下載</a>}</div>
+                <div className="flex items-center justify-between px-2 py-1.5 text-xs text-stone-300"><span className="truncate">{it.code} {it.title}</span>{a?.reelUrl && <a href={a.reelUrl} download className="ml-2 underline">下載</a>}</div>
+                {!producing && a && <button onClick={() => setEditId(it._id)} className="w-full border-t border-stone-700 py-1.5 text-xs text-white hover:bg-stone-800">編輯分鏡</button>}
               </div>
             );
           })}

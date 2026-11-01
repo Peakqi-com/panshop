@@ -11,6 +11,7 @@ import { createCanvas, loadImage, GlobalFonts, type SKRSContext2D, type Image } 
 import { ffmpegPath, run } from "@/lib/ffmpeg";
 import { generateMusic } from "./music";
 import { PALETTES } from "./ad";
+import { knockOutBackground } from "./knockout";
 
 export const W = 1080, H = 1920, FPS = 30;
 const FONT = "PanShopTC";
@@ -63,18 +64,42 @@ export async function renderAdV2(input: AdV2Input): Promise<{ mp4: string; cover
   })() : null;
   const sceneImgs: (Image | null)[] = [];
   const sceneBlur: (Image | null)[] = [];
+  const sceneKeyed: boolean[] = [];   // 棚拍圖是否已去背；否則放白卡
   for (const [i, sc] of input.scenes.entries()) {
     if (!sc.imagePath) { sceneImgs.push(null); continue; }
-    // 直式畫布：照片類場景先做成 cover 尺寸，白底棚拍類另外處理
     const out = path.join(dir, `scene_${i}.jpg`);
     await sharp(sc.imagePath).resize(1200, 1200, { fit: "inside" }).jpeg({ quality: 90 }).toFile(out);
-    sceneImgs.push(await loadImage(out));
     if (sc.kind === "photo") {
+      const img = await loadImage(out);
+      sceneImgs.push(img);
       const bo = path.join(dir, `scene_${i}_blur.jpg`);
-      await sharp(sc.imagePath).resize(540, 960, { fit: "cover" }).blur(24).modulate({ brightness: 0.85 }).jpeg({ quality: 80 }).toFile(bo);
+      // 底圖取原圖上下緣延伸，不拿中間，商品顏色才不會被抹成一條色帶
+      const meta = await sharp(out).metadata();
+      const strip = Math.max(8, Math.round((meta.height ?? 1200) * 0.1));
+      const part = (top: number) => sharp(out).extract({ left: 0, top, width: meta.width ?? 1200, height: strip }).resize(540, 480, { fit: "fill" }).png().toBuffer();
+      const [upper, lower] = await Promise.all([part(0), part((meta.height ?? 1200) - strip)]);
+      await sharp({ create: { width: 540, height: 960, channels: 3, background: "#888" } }).composite([{ input: upper, top: 0, left: 0 }, { input: lower, top: 480, left: 0 }]).jpeg({ quality: 90 }).toBuffer()
+        .then((b) => sharp(b).blur(30).modulate({ brightness: 0.92 }).jpeg({ quality: 80 }).toFile(bo));
       sceneBlur[i] = await loadImage(bo);
-    } else sceneBlur[i] = null;
+      continue;
+    }
+    sceneBlur[i] = null;
+    const keyed = path.join(dir, `scene_${i}_key.png`);
+    sceneKeyed[i] = await knockOutBackground(sc.imagePath, keyed).catch(() => false);
+    sceneImgs.push(await loadImage(sceneKeyed[i] ? keyed : out));
   }
+  // 不是直式的照片：上下邊淡出，融進模糊底，不留硬邊
+  const FEATHER = 0.12;
+  const isTall = (img: Image) => img.height / img.width >= 1.5;
+  const feathered = sceneImgs.map((img) => {
+    if (!img || isTall(img)) return img;
+    const c = createCanvas(img.width, img.height), x = c.getContext("2d");
+    x.drawImage(img, 0, 0);
+    const g = x.createLinearGradient(0, 0, 0, img.height);
+    g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(FEATHER, "rgba(0,0,0,1)"); g.addColorStop(1 - FEATHER, "rgba(0,0,0,1)"); g.addColorStop(1, "rgba(0,0,0,0)");
+    x.globalCompositeOperation = "destination-in"; x.fillStyle = g; x.fillRect(0, 0, img.width, img.height);
+    return c as unknown as Image;
+  });
   // 棚拍場的背景材質：預先畫一張柔光漸層加細微顆粒
   const bgTex = (() => {
     const c = createCanvas(W, H), x = c.getContext("2d");
@@ -87,13 +112,12 @@ export async function renderAdV2(input: AdV2Input): Promise<{ mp4: string; cover
 
   const canvas = createCanvas(W, H);
   let ctx = canvas.getContext("2d");
-  const priceText = input.price != null ? `${input.currency} ${input.price.toLocaleString()}` : "價格請私訊";
   const starts: number[] = []; let acc = 0;
   for (const sc of input.scenes) { starts.push(acc); acc += sc.durationSec; }
   const total = acc;
 
-  function header() {
-    ctx.fillStyle = p.muted; ctx.font = `500 34px ${FONT}`; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  function header(onPhoto: boolean) {
+    ctx.fillStyle = onPhoto ? "rgba(255,255,255,0.9)" : p.muted; ctx.font = `500 34px ${FONT}`; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     ctx.fillText(input.storeName, 72, 118); ctx.textAlign = "right"; ctx.fillText(input.code, W - 72, 118);
   }
   function subtitleBar(text: string, a: number) {
@@ -106,44 +130,50 @@ export async function renderAdV2(input: AdV2Input): Promise<{ mp4: string; cover
     ctx.fillStyle = "#fff"; lines.forEach((l, i) => ctx.fillText(l, W / 2, y0 + i * 60));
     ctx.restore();
   }
-  function headline(text: string, a: number) {
-    ctx.save(); ctx.globalAlpha = a; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-    ctx.font = `700 96px ${FONT}`;
+  /** 鉤子放畫面上方，商品往下讓位，字不壓商品 */
+  function headline(text: string, a: number, onPhoto: boolean) {
+    ctx.save(); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    ctx.font = `700 92px ${FONT}`;
     const lines = wrap(ctx, text, W - 160, 2);
-    const y0 = H * 0.62;
-    // 底部漸層讓字清楚
-    const g = ctx.createLinearGradient(0, y0 - 260, 0, H); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.55)"); ctx.fillStyle = g; ctx.fillRect(0, y0 - 260, W, H - y0 + 260);
-    ctx.fillStyle = "#fff"; lines.forEach((l, i) => ctx.fillText(l, 80, y0 + i * 116));
-    ctx.fillStyle = p.accent; ctx.fillRect(80, y0 + lines.length * 116 - 70, 120, 10);
+    const y0 = 270, lh = 112;
+    if (onPhoto) { const g = ctx.createLinearGradient(0, 0, 0, y0 + lines.length * lh + 90); g.addColorStop(0, "rgba(0,0,0,0.6)"); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, y0 + lines.length * lh + 90); }
+    ctx.globalAlpha = a;
+    ctx.fillStyle = onPhoto ? "#fff" : p.fg; lines.forEach((l, i) => ctx.fillText(l, 80, y0 + i * lh));
+    ctx.fillStyle = p.accent; ctx.fillRect(80, y0 + (lines.length - 1) * lh + 36, 120, 10);
     ctx.restore();
   }
-  function pricePanel(local: number) {
+  function pricePanel(local: number, onPhoto: boolean) {
     const k = ease(local / 0.8);
     ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-    const g = ctx.createLinearGradient(0, H * 0.45, 0, H); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.6)"); ctx.fillStyle = g; ctx.fillRect(0, H * 0.45, W, H * 0.55);
+    // 照片底才需要壓暗；素色底直接用風格色，字才清楚
+    if (onPhoto) { const g = ctx.createLinearGradient(0, H * 0.45, 0, H); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(0.4, "rgba(0,0,0,0.6)"); g.addColorStop(1, "rgba(0,0,0,0.75)"); ctx.fillStyle = g; ctx.fillRect(0, H * 0.45, W, H * 0.55); }
     ctx.globalAlpha = k;
-    ctx.fillStyle = "#fff"; ctx.font = `500 50px ${FONT}`; wrap(ctx, input.title, W - 200, 2).forEach((l, i) => ctx.fillText(l, W / 2, H * 0.64 + i * 62));
+    ctx.fillStyle = onPhoto ? "#fff" : p.fg; ctx.font = `500 50px ${FONT}`; wrap(ctx, input.title, W - 200, 2).forEach((l, i) => ctx.fillText(l, W / 2, H * 0.60 + i * 62));
     const shown = input.price != null ? Math.round(input.price * ease(local / 1.0)) : null;
-    ctx.fillStyle = p.accent === "#111111" ? "#fff" : p.accent; ctx.font = `700 124px ${FONT}`;
-    ctx.fillText(shown != null ? `${input.currency} ${shown.toLocaleString()}` : "價格請私訊", W / 2, H * 0.76);
+    ctx.fillStyle = onPhoto ? "#fff" : p.accent; ctx.font = `700 124px ${FONT}`;
+    ctx.fillText(shown != null ? `${input.currency} ${shown.toLocaleString()}` : "價格請私訊", W / 2, H * 0.73);
     const k2 = ease((local - 0.6) / 0.5); ctx.globalAlpha = k2;
     ctx.font = `700 50px ${FONT}`; const cw = ctx.measureText(input.cta).width + 90;
-    rr(ctx, W / 2 - cw / 2, H * 0.80, cw, 94, 47); ctx.fillStyle = "#fff"; ctx.fill(); ctx.fillStyle = "#1c1917"; ctx.fillText(input.cta, W / 2, H * 0.80 + 64);
-    ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.font = `500 34px ${FONT}`; ctx.fillText(input.storeName, W / 2, H * 0.90);
+    rr(ctx, W / 2 - cw / 2, H * 0.77, cw, 94, 47); ctx.fillStyle = onPhoto ? "#fff" : p.fg; ctx.fill(); ctx.fillStyle = onPhoto ? "#1c1917" : p.bg1; ctx.fillText(input.cta, W / 2, H * 0.77 + 64);
+    ctx.fillStyle = onPhoto ? "rgba(255,255,255,0.85)" : p.muted; ctx.font = `500 34px ${FONT}`; ctx.fillText(input.storeName, W / 2, H * 0.87);
     ctx.restore();
   }
   function drawScene(i: number, t: number) {
     const sc = input.scenes[i]; const local = t - starts[i]; const prog = local / sc.durationSec;
     const m = motionAt(sc.motion, prog);
     const img = sceneImgs[i];
-    if (sc.kind === "photo" && img) {
+    const onPhoto = sc.kind === "photo" && !!img;
+    const isHead = sc.overlay === "headline", isClose = sc.overlay === "price" || sc.overlay === "cta";
+    if (onPhoto) {
       const blur = sceneBlur[i];
       if (blur) { const bs = Math.max(W / blur.width, H / blur.height) * 1.05; ctx.drawImage(blur, (W - blur.width * bs) / 2, (H - blur.height * bs) / 2, blur.width * bs, blur.height * bs); }
-      const fs0 = (W / img.width) * m.scale;
-      ctx.save(); ctx.translate(W / 2 + m.dx, H * 0.45 + m.dy); ctx.rotate(m.rot);
-      ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 50; ctx.shadowOffsetY = 20;
-      ctx.drawImage(img, (-img.width * fs0) / 2, (-img.height * fs0) / 2, img.width * fs0, img.height * fs0); ctx.restore();
-      // 輕微暗角
+      const tall = isTall(img!);
+      const pic = feathered[i]!;
+      const fs0 = (tall ? Math.max(W / pic.width, H / pic.height) : W / pic.width) * m.scale;
+      // 鉤子場往下讓出標題區；結尾場往上讓出價格區
+      const cy = tall ? H / 2 : isHead ? H * 0.54 : isClose ? H * 0.34 : H * 0.45;
+      ctx.save(); ctx.translate(W / 2 + m.dx, cy + m.dy); ctx.rotate(m.rot);
+      ctx.drawImage(pic, (-pic.width * fs0) / 2, (-pic.height * fs0) / 2, pic.width * fs0, pic.height * fs0); ctx.restore();
       const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.28)"); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
     } else {
       ctx.drawImage(bgTex, 0, 0);
@@ -151,19 +181,18 @@ export async function renderAdV2(input: AdV2Input): Promise<{ mp4: string; cover
       const rg = ctx.createRadialGradient(gx, gy, 10, gx, gy, 800); rg.addColorStop(0, dark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.45)"); rg.addColorStop(1, "rgba(255,255,255,0)"); ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
       const subject = (img ?? heroShadow) as unknown as Image | null;
       if (subject) {
-        const box = W * (sc.overlay === "price" ? 0.62 : 0.92);
-        const cy = sc.overlay === "price" ? H * 0.32 : H * 0.45;
+        const box = W * (isClose ? 0.62 : isHead ? 0.8 : 0.92);
+        const cy = isClose ? H * 0.32 : isHead ? H * 0.54 : H * 0.45;
         const sz = Math.min(box / subject.width, box / subject.height) * m.scale;
         ctx.save(); ctx.translate(W / 2 + m.dx, cy + m.dy + Math.sin(local * 1.4) * 6); ctx.rotate(m.rot);
-        if (img && dark) { rr(ctx, (-img.width * sz) / 2 - 24, (-img.height * sz) / 2 - 24, img.width * sz + 48, img.height * sz + 48, 40); ctx.fillStyle = "#fff"; ctx.fill(); }
-        else if (img) ctx.globalCompositeOperation = "multiply";
+        if (img && !sceneKeyed[i]) { rr(ctx, (-img.width * sz) / 2 - 24, (-img.height * sz) / 2 - 24, img.width * sz + 48, img.height * sz + 48, 40); ctx.fillStyle = "#fff"; ctx.fill(); }
         ctx.drawImage(subject, (-subject.width * sz) / 2, (-subject.height * sz) / 2, subject.width * sz, subject.height * sz);
         ctx.restore();
       }
     }
-    header();
-    if (sc.overlay === "headline") headline(input.hook, ease((local - 0.3) / 0.6));
-    if (sc.overlay === "price" || sc.overlay === "cta") pricePanel(local);
+    header(onPhoto);
+    if (isHead) headline(input.hook, ease((local - 0.3) / 0.6), onPhoto);
+    if (sc.overlay === "price" || sc.overlay === "cta") pricePanel(local, onPhoto);
     else {
       const a = Math.min(ease((local - 0.15) / 0.3), ease((sc.durationSec - local) / 0.3));
       subtitleBar(sc.subtitle, a);

@@ -28,7 +28,9 @@ export type ItemRow = {
   confidence: { title: number; price: number; overall: number }; sources: { vision: boolean; speech: boolean }; speechEvidence: string;
 };
 export type TrackRow = { _id: string; category: string; samObjectId: string; startSec: number; endSec: number; boxes: { t: number; x1: number; y1: number; x2: number; y2: number; w: number; h: number }[] };
-export type AssetRow = { itemId: string; cutoutUrl?: string; studioUrl?: string; lifestyleUrl?: string; coverUrl?: string; reelUrl?: string; shots?: { kind: string; label: string; url: string }[]; caption: string; captionShort?: string; captionLong?: string; hook?: string; sellingPoints?: string[]; voiceover?: string; history?: { kind: string; url: string }[]; status: string };
+export type AssetRow = { itemId: string; cutoutUrl?: string; studioUrl?: string; lifestyleUrl?: string; coverUrl?: string; reelUrl?: string; shots?: { kind: string; label: string; url: string }[]; caption: string; captionShort?: string; captionLong?: string; hook?: string; sellingPoints?: string[]; voiceover?: string; history?: { kind: string; url: string }[]; status: string; storyboard?: StoryboardRow };
+export type SceneRow = { sceneNo: number; durationSec: number; purpose: string; shot: string; imagePrompt: string; motion: string; narration: string; subtitle: string; overlay: string; imageUrl?: string };
+export type StoryboardRow = { hook: string; cta: string; scenes: SceneRow[]; voice?: string; music?: string; musicLabel?: string; gallery?: string[] };
 
 const STAGE_HINT: Record<Stage, string> = {
   extract: "讀取影片或照片、抽出影格與音軌",

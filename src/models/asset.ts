@@ -14,6 +14,9 @@ export const AssetSchema = z.object({
       motion: z.string(), narration: z.string(), subtitle: z.string(), overlay: z.string(), imageUrl: z.string().optional(),
     })),
     voice: z.string().optional(),                      // 實際用的配音：fish、openai、seller、none
+    music: z.string().optional(),                      // auto、synth、none 或曲庫曲目 id
+    musicLabel: z.string().optional(),                 // 上次實際用的音樂
+    gallery: z.array(z.string()).optional(),           // 曾生成或上傳的場景圖，換圖時可選回來
   }).optional(),
   brief: z.object({                                   // 視覺簡報（Spark 依裁圖寫，生圖與短片共用）
     subject: z.string(), materialNotes: z.string(), scene: z.string(), props: z.string(), lighting: z.string(), palette: z.string(),

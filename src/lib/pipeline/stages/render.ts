@@ -17,6 +17,7 @@ import { renderAd } from "@/lib/video/ad";
 import { renderAdV2, type SceneSpec } from "@/lib/video/ad2";
 import { writeStoryboard, ensureSceneImages } from "@/lib/video/storyboard";
 import { synthesize, stripDirection } from "@/lib/video/tts";
+import { resolveMusic } from "@/lib/video/pick-music";
 import { settings } from "@/repositories/settings";
 import { STYLES, type StyleId } from "@/lib/config";
 
@@ -120,21 +121,22 @@ export async function renderItem(job: Job, it: Item, a: Asset, spans: readonly (
         narrationPath: v?.path, narrationStart: v ? cursor + 0.25 : undefined, narrationDur: v?.dur });
       cursor += dur;
     }
+    const mus = await resolveMusic(sb.music, style, it.code, cursor, dir, log);
     const r = await renderAdV2({ code: it.code, title: it.title || it.category, price: it.price, currency: job.currency, storeName: job.shopName || "PanShop", style,
-      hook: sb.hook || a.hook || it.title, cta: `留言 ${it.code} 取得連結`, cutoutPath, scenes, workDir: dir });
+      hook: sb.hook || a.hook || it.title, cta: `留言 ${it.code} 取得連結`, cutoutPath, scenes, musicPath: mus.path, workDir: dir });
     const stamp = Date.now().toString(36);
     const [reelUrl, coverUrl] = await Promise.all([
       putFile(`jobs/${job.code}/items/${stamp}/${it.code}/ad.mp4`, r.mp4),
       putFile(`jobs/${job.code}/items/${stamp}/${it.code}/cover.png`, r.cover),
     ]);
-    await assetRepo.upsert(it._id!, job._id!, { reelUrl, coverUrl, reelDurationSec: r.durationSec, status: "done", storyboard: { ...sb, voice: voice.mode } });
+    await assetRepo.upsert(it._id!, job._id!, { reelUrl, coverUrl, reelDurationSec: r.durationSec, status: "done", storyboard: { ...sb, voice: voice.mode, musicLabel: mus.label } });
     await jobs.addCost(job._id!, usd);
     return { ok: true as const, reelUrl, coverUrl };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     log(`${it.code} v2 短片失敗，退回 v1：${msg.slice(0, 200)}`);
     try {
-      return await renderItemV1(job, it, a, spans, dir, log);
+      return { ...(await renderItemV1(job, it, a, spans, dir, log)), fallback: msg.slice(0, 200) };
     } catch (e2) {
       const m2 = e2 instanceof Error ? e2.message : String(e2);
       await assetRepo.upsert(it._id!, job._id!, { status: "failed", error: m2.slice(0, 500) });

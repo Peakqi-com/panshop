@@ -10,6 +10,7 @@ async function main() {
   await db.collection("comments").createIndexes([{ key: { jobId: 1, _id: -1 } }]);
   await db.collection("jobs").createIndexes([{ key: { status: 1, _id: -1 } }]);
   await db.collection("secrets").createIndexes([{ key: { tenantId: 1, name: 1 }, unique: true }]);
+  await db.collection("music").createIndexes([{ key: { active: 1, _id: 1 } }]);
   console.log("indexes ok");
   process.exit(0);
 }

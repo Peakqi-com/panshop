@@ -12,6 +12,7 @@ import { delPrefix, delBlob } from "@/lib/blob";
 import { getDb } from "@/lib/db";
 import { sparkText } from "@/lib/meta";
 import { sparkOpenChat } from "@/lib/baseten";
+import { music } from "@/repositories/music";
 
 async function guard() {
   if (!(await isAdmin())) throw new Error("未登入");
@@ -95,6 +96,28 @@ export async function deleteJobsAction(ids: string[]) {
   revalidatePath("/admin/jobs");
   revalidatePath("/admin");
   return ids.length;
+}
+
+export async function addMusicAction(input: { title: string; url: string; durationSec: number; styles: string[]; license: string }) {
+  await guard();
+  if (!/\.public\.blob\.vercel-storage\.com\//.test(input.url)) throw new Error("音檔網址不對");
+  await music.add(input);
+  revalidatePath("/admin/music");
+}
+
+export async function updateMusicAction(id: string, set: { title?: string; styles?: string[]; license?: string; active?: boolean }) {
+  await guard();
+  await music.update(id, set);
+  revalidatePath("/admin/music");
+}
+
+export async function deleteMusicAction(id: string) {
+  await guard();
+  const t = await music.byId(id);
+  if (!t) return;
+  await delBlob(t.url).catch(() => undefined);
+  await music.remove(id);
+  revalidatePath("/admin/music");
 }
 
 export type HealthRow = { name: string; ok: boolean; ms: number; detail: string };
