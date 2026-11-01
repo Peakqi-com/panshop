@@ -69,6 +69,8 @@ const segment: StageFn = async ({ job, jobId, log }) => {
           const meanArea = seg.reduce((s, b) => s + area(b), 0) / seg.length;
           const dur = seg[seg.length - 1].t - seg[0].t + 1 / fps;
           if (dur < PIPE.minTrackSec || meanArea < PIPE.minTrackArea || meanConf < PIPE.minTrackConf) continue;
+          // 又小又短的片段通常是商品剛進出畫面時的一小角（把手、邊緣），不成一件
+          if (meanArea < PIPE.sliverArea && dur < PIPE.sliverSec) continue;
           drafts.push({ jobId, category: cat.name, samObjectId: k ? `${objectId}-${k}` : objectId, startSec: seg[0].t, endSec: seg[seg.length - 1].t + 1 / fps, boxes: seg, crops: [], cutouts: [], meanConf, meanArea });
         }
       }

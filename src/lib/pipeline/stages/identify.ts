@@ -32,29 +32,34 @@ const identify: StageFn = async ({ job, jobId, log }) => {
   const work = list.map((it) => async () => {
     const spans = it.trackIds.map((id) => trById.get(String(id))).filter(Boolean).map((t) => [t!.startSec - 1.5, t!.endSec + 1.5] as const);
     const turns = job.transcript.filter((tu) => spans.some(([a, b]) => tu.startSec < b && a < tu.endSec));
-    const speechText = turns.length ? turns.map((t) => `[${t.startSec.toFixed(1)}s] ${t.text}${t.prices.length ? `（價格 ${t.prices.join("/")}）` : ""}`).join("\n") : "（這段時間沒有口述）";
+    const speechText = turns.length ? turns.map((t) => `[${t.startSec.toFixed(1)}s] ${t.text}${t.prices.length ? `（這句抽到的價格：${t.prices.join("、")}）` : ""}`).join("\n") : "（這段時間沒有口述）";
+    const candidatePrices = Array.from(new Set(turns.flatMap((t) => t.prices)));
     const { data, usd: u } = await sparkJSON({
       schema: Out,
       name: "product",
       effort: PIPE.sparkEffort,
       system: `你是電商上架助理，替台灣的小賣家寫商品資料。輸出繁體中文（Google 分類除外）。品名以畫面為準、口述為輔；價格只能來自口述，畫面上的價格標籤也算口述證據。幣別 ${job.currency}。`,
       parts: [
-        { text: `商品編號 ${it.code}，品類「${it.category}」。以下是這件商品的裁圖（同一件、不同角度），以及它入鏡時段的口述：\n${speechText}` },
+        { text: `商品編號 ${it.code}，品類「${it.category}」。以下是這件商品的裁圖（同一件、不同角度），以及它入鏡時段的口述：\n${speechText}\n${candidatePrices.length ? `口述時段內出現的價格候選：${candidatePrices.join("、")}。若其中一個價格緊跟著描述這件商品的句子，就採用它。` : ""}` },
         ...it.primaryCropUrls.map((u) => ({ imageUrl: u })),
         ...(it.primaryCutoutUrl ? [{ imageUrl: it.primaryCutoutUrl }] : []),
       ],
     });
     usd += u;
+    // 模型偶爾會在證據明確時仍回 null：口述時段只有一個價格候選，且模型自己也說用到了口述，就補上
+    let price = data.price;
+    let confPrice = data.confidencePrice;
+    if (price == null && candidatePrices.length === 1 && (data.speechUsed || data.speechEvidence)) { price = candidatePrices[0]; confPrice = Math.max(confPrice, 0.6); }
     if (data.speechUsed) speechHits++;
-    const conf = { title: clamp(data.confidenceTitle), price: clamp(data.confidencePrice), overall: 0 };
-    conf.overall = Number((conf.title * 0.7 + (data.price != null ? conf.price : 0.5) * 0.3).toFixed(2));
+    const conf = { title: clamp(data.confidenceTitle), price: clamp(confPrice), overall: 0 };
+    conf.overall = Number((conf.title * 0.7 + (price != null ? conf.price : 0.5) * 0.3).toFixed(2));
     await itemRepo.setFields(it._id!, {
       title: data.title, color: data.color, material: data.material, description: data.description,
-      price: data.price, googleProductCategory: data.googleProductCategory, sceneHint: data.sceneHint,
+      price, googleProductCategory: data.googleProductCategory, sceneHint: data.sceneHint,
       attributes: Object.fromEntries(data.attributes.map((a) => [a.key, a.value])),
       confidence: conf, sources: { vision: true, speech: data.speechUsed }, speechEvidence: data.speechEvidence,
     });
-    log(`${it.code} ${data.title} ${data.price ?? "-"} (${conf.overall})`);
+    log(`${it.code} ${data.title} ${price ?? "-"} (${conf.overall})`);
   });
 
   for (let i = 0; i < work.length; i += PIPE.identifyConcurrency) await Promise.all(work.slice(i, i + PIPE.identifyConcurrency).map((f) => f()));
@@ -100,6 +105,7 @@ async function mergeDuplicates(jobId: ObjectId, trById: Map<string, { startSec: 
       await itemRepo.setFields(keep._id!, {
         trackIds: [...keep.trackIds, ...rest.flatMap((r) => r.trackIds)],
         price: keep.price ?? rest.find((r) => r.price != null)?.price ?? null,
+        speechEvidence: keep.speechEvidence || rest.find((r) => r.speechEvidence)?.speechEvidence || "",
         sources: { vision: true, speech: keep.sources.speech || rest.some((r) => r.sources.speech) },
       });
       for (const r of rest) { await itemRepo.setFields(r._id!, { status: "deleted", title: `${r.title}（併入 ${keep.code}）` }); removed++; }

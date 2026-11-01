@@ -7,6 +7,8 @@ export const PIPE = {
   minTrackSec: 0.75,     // 短於此的 track 視為雜訊
   minTrackArea: 0.003,   // 框面積占畫面比例低於此視為雜訊
   minTrackConf: 0.35,
+  sliverArea: 0.03,      // 面積占比低於此且
+  sliverSec: 4,          // 長度短於此 → 視為進出畫面的一角，丟掉
   cropsPerTrack: 3,
   cropMargin: 0.15,
   cutoutPad: 0.08,
