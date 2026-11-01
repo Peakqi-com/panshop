@@ -1,10 +1,10 @@
-# Video to Catalog
+# PanShop
 
-**One video in. A full product catalog out.**
+**Pan your phone across your products. Your shop is ready.**
 
-Point your phone at a table of products, talk through what they are, and get back a deduplicated product list, clean product images, titles and descriptions, a Meta-ready catalog file, a shoppable page, and one short vertical video per product.
+PanShop turns one slow pan of your phone camera into a complete store: a deduplicated product list, clean product images, titles and descriptions, a Meta-ready catalog file, a shoppable page, and one short vertical video per product. Talk while you pan and the names and prices come along for free.
 
-Built for the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon) (Startup track, theme *Build for Your World*) by [PEAKQI](https://peakqi.com), Taipei.
+PanShop is built for the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon) (Startup track, theme *Build for Your World*) by [PEAKQI](https://peakqi.com), Taipei.
 
 [繁體中文說明](./README.zh-TW.md)
 
@@ -12,16 +12,16 @@ Built for the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/m
 
 ## Why
 
-Small sellers, group-buy hosts, market vendors and resellers rotate inventory every week. Listing 20 products still means a day of photographing, background removal, copywriting, catalog entry and video editing. Video to Catalog collapses that into a one-to-three-minute walk-around video.
+Small sellers, group-buy hosts, market vendors and resellers rotate inventory every week. Listing 20 products still means a day of photographing, background removal, copywriting, catalog entry and video editing. PanShop collapses that day into one pan of the camera: one to three minutes of video, shot on whatever table the products are already on.
 
 ## What it does
 
-1. **Capture**: upload a video of your products. Speak the product names and prices as you film.
+1. **Pan**: film one slow pan across your products. Say the product names and prices as you go.
 2. **Segment and deduplicate**: SAM 3.1 finds every product, tracks it across frames and keeps one record per physical item, even when it leaves and re-enters the frame.
-3. **Identify**: Muse Spark reads the best crops of each item and the spoken audio from Muse Voice Transcribe to produce title, attributes, category, price and description.
+3. **Identify**: Muse Spark reads the best crops of each item and what you said during the pan, transcribed by Muse Voice Transcribe, to produce title, attributes, category, price and description.
 4. **Shoot**: Muse Image generates a white-background shot and a lifestyle shot per item from its own crops.
 5. **Review**: one table. Fix a price, drop an item, done.
-6. **Publish**: export a Meta Commerce Manager catalog CSV, a shoppable page, and a 9:16 video with cover and caption for every product.
+6. **Shop**: export a Meta Commerce Manager catalog CSV, open your shoppable page, and get a 9:16 video with cover and caption for every product.
 
 ## Meta models used
 
@@ -57,7 +57,7 @@ video ──► ffmpeg (frames @2fps, audio)
 
 ## Evaluation
 
-Measured on a real 15-item, 3-category tabletop video shot during the hackathon. Numbers will be filled in as they are measured.
+Measured on a real 15-item, 3-category tabletop pan shot during the hackathon. Numbers will be filled in as they are measured.
 
 | Metric | Result |
 |---|---|
@@ -71,7 +71,7 @@ Measured on a real 15-item, 3-category tabletop video shot during the hackathon.
 
 - All code in this repository was written during the hackathon window (26 Oct to 4 Nov 2026).
 - The product is designed as a new module of our production marketing-content SaaS. That product is linked, not included; no existing code or customer assets are in this repository.
-- Demo footage uses our own household items. No third-party products or brands.
+- Demo footage is a pan across our own household items. No third-party products or brands.
 - Instagram and WhatsApp publishing are on the roadmap and are not part of this submission. Catalog export targets the Meta Commerce Manager CSV format.
 
 ## Getting started
