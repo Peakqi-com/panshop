@@ -19,9 +19,9 @@ Small sellers, group-buy hosts, market vendors and resellers rotate inventory ev
 1. **Pan**: film one slow pan across your products. Say the product names and prices as you go.
 2. **Segment and deduplicate**: SAM 3.1 finds every product, tracks it across frames and keeps one record per physical item, even when it leaves and re-enters the frame.
 3. **Identify**: Muse Spark reads the best crops of each item and what you said during the pan, transcribed by Muse Voice Transcribe, to produce title, attributes, category, price and description.
-4. **Shoot**: a white-background cutout is composited from the SAM mask, then Muse Image produces a studio shot and a lifestyle shot per item from its own crops.
+4. **Shoot**: the SAM mask gives a transparent cutout, then Muse Image produces three studio angles (front, three-quarter, side) and one lifestyle shot per item from its own crops, in a style the seller picks.
 5. **Review**: one table. Fix a price, drop an item, done. A timeline shows every second each item was on camera, so you can see that a product that left and came back still counts once.
-6. **Shop**: export a Meta Commerce Manager catalog CSV, open your shoppable page, and get a 9:16 video with cover and caption for every product.
+6. **Shop**: export a Meta Commerce Manager catalog CSV, open your shoppable page, and get a 15-second 9:16 product ad per item: hook, hero zoom on the cutout, three selling-point cards, price and call to action, with the seller's own voice from the pan as the voiceover over a generated music bed. Titles, prices, captions and selling points are editable, and any item's shots or video can be regenerated on its own.
 
 ## Meta models used
 
@@ -49,8 +49,8 @@ upload (Blob client upload)
   │
   ▼  review table + timeline (human confirms once)
   │
-  ├─ 7 shoot       Muse Image studio and lifestyle shots from the item's own crops
-  └─ 8 render      copy, Meta catalog CSV, shoppable page, one 9:16 video per item
+  ├─ 7 shoot       Muse Image: three studio angles and a lifestyle shot from the item's own crops
+  └─ 8 render      copy, Meta catalog CSV, shoppable page, one 15 s product ad per item (canvas frames + ffmpeg, seller voice + music)
 ```
 
 Every stage runs as its own serverless function invocation and writes its status to the job, so any stage can be re-run on its own. SAM is fed a 4 fps proxy, which keeps a 3-minute pan under 750 frames per category.
