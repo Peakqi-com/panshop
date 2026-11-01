@@ -20,6 +20,13 @@ async function fail(r: Response, what: string): Promise<never> {
 
 // ---------- Spark：結構化輸出 ----------
 
+async function toDataUrl(url: string): Promise<string> {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`下載圖片失敗 ${r.status} ${url}`);
+  const ct = r.headers.get("content-type") ?? "image/jpeg";
+  return `data:${ct};base64,${Buffer.from(await r.arrayBuffer()).toString("base64")}`;
+}
+
 export type Part = { text: string } | { imageUrl: string };
 
 export async function sparkJSON<T>(opts: {
@@ -47,11 +54,27 @@ export async function sparkJSON<T>(opts: {
   };
   let usd = 0;
   let lastErr = "";
-  // 偶爾會回空字串（推理把 token 用完或輸出被截斷），最多試兩次，第二次放大輸出上限、降低推理強度
-  for (let attempt = 0; attempt < 2; attempt++) {
+  let inlined = false;
+  // 偶爾會回空字串（推理把 token 用完或輸出被截斷），最多試三次，第二次起放大輸出上限、降低推理強度
+  for (let attempt = 0; attempt < 3; attempt++) {
     const b = attempt === 0 ? body : { ...body, max_completion_tokens: Math.max(8000, (opts.maxTokens ?? 4000) * 2), reasoning_effort: "low" };
     const r = await fetch(`${META_BASE}/chat/completions`, { method: "POST", headers: await headers({ "content-type": "application/json" }), body: JSON.stringify(b) });
-    if (!r.ok) await fail(r, "spark");
+    if (!r.ok) {
+      const text = await r.text().catch(() => "");
+      // 剛上傳的 Blob 偶爾還抓不到：改成自己下載後用 data URL 內嵌再送一次
+      if (r.status === 400 && text.includes("media_url_not_fetchable") && !inlined) {
+        inlined = true;
+        await new Promise((res) => setTimeout(res, 2000));
+        const msgs = body.messages as { role: string; content: unknown }[];
+        const user = msgs[msgs.length - 1].content as { type: string; image_url?: { url: string } }[];
+        for (const part of user) {
+          if (part.type === "image_url" && part.image_url && /^https?:/.test(part.image_url.url)) part.image_url.url = await toDataUrl(part.image_url.url);
+        }
+        attempt--;
+        continue;
+      }
+      throw new Error(`spark ${r.status}: ${text.slice(0, 600)}`);
+    }
     const j = (await r.json()) as { choices: { message: { content: string | null }; finish_reason?: string }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
     const raw = j.choices?.[0]?.message?.content ?? "";
     usd += (j.usage?.prompt_tokens ?? 0) * PRICE.sparkIn + (j.usage?.completion_tokens ?? 0) * PRICE.sparkOut;
