@@ -10,6 +10,9 @@ export const SETTING_KEYS = {
   META_API_KEY: { name: "meta.api_key", env: "META_API_KEY", label: "Meta Model API key" },
   BASETEN_API_KEY: { name: "baseten.api_key", env: "BASETEN_API_KEY", label: "Baseten API key（Muse Spark Open）" },
   BASETEN_MODEL: { name: "baseten.model", env: "BASETEN_MODEL", label: "Baseten 模型 slug" },
+  FISH_AUDIO_API_KEY: { name: "fish.api_key", env: "FISH_AUDIO_API_KEY", label: "Fish Audio API key（配音，聽得懂語氣指令）" },
+  FISH_VOICE_ID: { name: "fish.voice_id", env: "FISH_VOICE_ID", label: "Fish Audio 聲音 reference id" },
+  OPENAI_API_KEY: { name: "openai.api_key", env: "OPENAI_API_KEY", label: "OpenAI API key（配音備援 gpt-4o-mini-tts）" },
 } as const;
 export type SettingKey = keyof typeof SETTING_KEYS;
 

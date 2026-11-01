@@ -7,6 +7,14 @@ export const AssetSchema = z.object({
   jobId: z.instanceof(ObjectId),
   cutoutUrl: z.string().url().optional(),     // SAM 遮罩去背（確認表與後台用，不進商品卡）
   shots: z.array(z.object({ kind: z.string(), label: z.string(), url: z.string().url(), qa: z.string().optional() })).default([]),  // 多角度商品圖：front、threeQuarter、side、lifestyle
+  storyboard: z.object({                              // 短片分鏡（Spark 寫，場景圖補齊後存這裡）
+    hook: z.string(), cta: z.string(),
+    scenes: z.array(z.object({
+      sceneNo: z.number(), durationSec: z.number(), purpose: z.string(), shot: z.string(), imagePrompt: z.string().default(""),
+      motion: z.string(), narration: z.string(), subtitle: z.string(), overlay: z.string(), imageUrl: z.string().optional(),
+    })),
+    voice: z.string().optional(),                      // 實際用的配音：fish、openai、seller、none
+  }).optional(),
   brief: z.object({                                   // 視覺簡報（Spark 依裁圖寫，生圖與短片共用）
     subject: z.string(), materialNotes: z.string(), scene: z.string(), props: z.string(), lighting: z.string(), palette: z.string(),
     shots: z.array(z.object({ kind: z.string(), camera: z.string(), scene: z.string() })),

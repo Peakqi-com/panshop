@@ -53,6 +53,9 @@ export function AppSettingsForm({ value }: { value: AppSettings }) {
         <label className="text-sm"><span className="font-medium">照片匯入張數上限</span><input name="maxPhotos" type="number" min={1} max={60} defaultValue={value.maxPhotos} className="input mt-1" /></label>
         <label className="text-sm sm:col-span-2"><span className="font-medium">範例影片網址</span><input name="sampleVideoUrl" defaultValue={value.sampleVideoUrl} placeholder="空白＝用環境變數 SAMPLE_VIDEO_URL" className="input mt-1 font-mono text-xs" /></label>
         <label className="text-sm sm:col-span-2"><span className="font-medium">首頁公告</span><input name="announcement" defaultValue={value.announcement} placeholder="空白不顯示" className="input mt-1" /></label>
+        <label className="text-sm"><span className="font-medium">短片配音</span>
+          <select name="voiceMode" defaultValue={value.voiceMode} className="input mt-1"><option value="tts">專業 TTS 含語氣指令（Fish Audio，備援 OpenAI）</option><option value="seller">賣家原聲（從影片口述切出）</option><option value="none">無口白，只有字幕與音樂</option></select>
+        </label>
         <label className="text-sm"><span className="font-medium">留言對商品用的模型</span>
           <select name="commentModel" defaultValue={value.commentModel} className="input mt-1"><option value="spark-open">Muse Spark Open（Baseten，開放權重）</option><option value="spark">Muse Spark 1.3（Meta Model API）</option></select>
         </label>

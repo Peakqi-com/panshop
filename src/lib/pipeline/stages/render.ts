@@ -14,6 +14,10 @@ import type { Job } from "@/models/job";
 import type { Item } from "@/models/item";
 import type { Asset } from "@/models/asset";
 import { renderAd } from "@/lib/video/ad";
+import { renderAdV2, type SceneSpec } from "@/lib/video/ad2";
+import { writeStoryboard, ensureSceneImages } from "@/lib/video/storyboard";
+import { synthesize, stripDirection } from "@/lib/video/tts";
+import { settings } from "@/repositories/settings";
 import { STYLES, type StyleId } from "@/lib/config";
 
 const BUDGET_MS = 210_000;
@@ -82,58 +86,127 @@ async function writeCopy(job: Job, jobId: ObjectId, needCopy: Item[]) {
   return usd;
 }
 
-/** 單件短片：stage 與「重做這件短片」共用 */
+/** 單件短片：stage 與「重做這件短片」共用。v2 分鏡流程失敗時退回 v1 */
 export async function renderItem(job: Job, it: Item, a: Asset, spans: readonly (readonly [number, number])[], log: (m: string) => void) {
   const dir = await tmpDir("ad-");
   try {
     const style = (job.style as StyleId) in STYLES ? (job.style as StyleId) : "lifestyle";
-    const shots = a.shots ?? [];
-    const pick = (k: string) => shots.find((s) => s.kind === k)?.url;
+    const cfg = await settings.get();
     const dl = async (url: string | undefined, name: string) => (url ? download(url, path.join(dir, name)).catch(() => undefined) : undefined);
     const cutoutPath = await dl(a.cutoutUrl ?? it.primaryCutoutUrl, "cutout.png");
-    const heroPath = await dl(it.heroUrl ?? pick("threeQuarter") ?? a.studioUrl ?? pick("front"), "hero.img");
-    const lifestylePath = await dl(pick("lifestyle") ?? a.lifestyleUrl, "life.img");
-    const shotPaths = (await Promise.all(["front", "threeQuarter", "side"].map((k, i) => dl(pick(k), `shot${i}.img`)))).filter(Boolean) as string[];
+    let usd = 0;
 
-    // 口白：賣家講這件商品的原聲片段（口述時段與商品入鏡時段重疊、優先有價格的那句）
-    let voicePath: string | undefined, voiceDur: number | undefined, subtitle: string | undefined;
-    if (job.video.audioUrl && job.transcript.length && spans.length) {
-      const turns = job.transcript.filter((tu) => spans.some(([s, e]) => tu.startSec < e + 1.5 && s - 1.5 < tu.endSec));
-      const turn = turns.find((t) => t.prices.length) ?? turns[0];
-      if (turn) {
-        // 一個 turn 可能講了好幾件：切成句子，挑講這件的那一句，時間依字元比例估算（只有 turn 級時間戳）
-        const seg = pickSentence(turn.text, it, job.currency);
-        const turnDur = Math.max(0.5, turn.endSec - turn.startSec);
-        const start = Math.max(0, turn.startSec + turnDur * seg.from - 0.15);
-        const dur = Math.min(8, Math.max(1, turnDur * (seg.to - seg.from) + 0.35));
-        const src = await dl(job.video.audioUrl, "audio.wav");
-        const out = path.join(dir, "voice.wav");
-        if (src) {
-          await run(["-y", "-ss", start.toFixed(2), "-t", dur.toFixed(2), "-i", src, "-af", "afade=t=in:d=0.08,afade=t=out:st=" + Math.max(0, dur - 0.2).toFixed(2) + ":d=0.2", out]).catch(() => undefined);
-          if (await fs.stat(out).then(() => true, () => false)) { voicePath = out; voiceDur = dur; subtitle = seg.text; }
-        }
-      }
+    // 1. 分鏡（已有就沿用，讓使用者改過的分鏡不會被蓋掉）
+    let sb = a.storyboard;
+    if (!sb) {
+      const w = await writeStoryboard(job, it, a); usd += w.usd;
+      const { scenes, usd: u2 } = await ensureSceneImages(job, it, a, w.sb, log); usd += u2;
+      sb = { hook: w.sb.hook, cta: w.sb.cta || `留言 ${it.code} 取得連結`, scenes };
+      await assetRepo.upsert(it._id!, job._id!, { storyboard: sb, hook: a.hook || w.sb.hook });
     }
-    const r = await renderAd({
-      code: it.code, title: it.title || it.category, price: it.price, currency: job.currency, storeName: job.shopName || "PanShop", style,
-      hook: a.hook || it.title, sellingPoints: a.sellingPoints?.length ? a.sellingPoints : [it.color, it.material, it.category].filter(Boolean), subtitle,
-      cutoutPath, heroPath, lifestylePath, shotPaths, voicePath, voiceStartSec: voicePath ? 1.6 : undefined, voiceDurSec: voiceDur, workDir: dir,
-    });
+
+    // 2. 配音：專業 TTS（Fish 優先、OpenAI 備援）→ 賣家原聲 → 無
+    const voice = await prepareVoice(job, it, sb.scenes, spans, cfg.voiceMode, dir, log);
+
+    // 3. 每一場的素材與時長（旁白比預設長就延長那一場）
+    const scenes: SceneSpec[] = [];
+    let cursor = 0;
+    for (const [i, sc] of sb.scenes.entries()) {
+      const imagePath = await dl(sc.imageUrl, `sc${i}.img`);
+      const v = voice.clips[i];
+      const dur = Math.max(sc.durationSec, (v?.dur ?? 0) + 0.8);
+      scenes.push({ durationSec: dur, imagePath, kind: ["front", "threeQuarter", "side"].includes(sc.shot) ? "studio" : "photo", motion: sc.motion,
+        subtitle: stripDirection(sc.subtitle || sc.narration), overlay: sc.overlay as SceneSpec["overlay"],
+        narrationPath: v?.path, narrationStart: v ? cursor + 0.25 : undefined, narrationDur: v?.dur });
+      cursor += dur;
+    }
+    const r = await renderAdV2({ code: it.code, title: it.title || it.category, price: it.price, currency: job.currency, storeName: job.shopName || "PanShop", style,
+      hook: sb.hook || a.hook || it.title, cta: sb.cta, cutoutPath, scenes, workDir: dir });
     const stamp = Date.now().toString(36);
     const [reelUrl, coverUrl] = await Promise.all([
       putFile(`jobs/${job.code}/items/${stamp}/${it.code}/ad.mp4`, r.mp4),
       putFile(`jobs/${job.code}/items/${stamp}/${it.code}/cover.png`, r.cover),
     ]);
-    await assetRepo.upsert(it._id!, job._id!, { reelUrl, coverUrl, reelDurationSec: r.durationSec, status: "done" });
+    await assetRepo.upsert(it._id!, job._id!, { reelUrl, coverUrl, reelDurationSec: r.durationSec, status: "done", storyboard: { ...sb, voice: voice.mode } });
+    await jobs.addCost(job._id!, usd);
     return { ok: true as const, reelUrl, coverUrl };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    log(`${it.code} 短片失敗 ${msg.slice(0, 200)}`);
-    await assetRepo.upsert(it._id!, job._id!, { status: "failed", error: msg.slice(0, 500) });
-    return { ok: false as const, error: msg };
+    log(`${it.code} v2 短片失敗，退回 v1：${msg.slice(0, 200)}`);
+    try {
+      return await renderItemV1(job, it, a, spans, dir, log);
+    } catch (e2) {
+      const m2 = e2 instanceof Error ? e2.message : String(e2);
+      await assetRepo.upsert(it._id!, job._id!, { status: "failed", error: m2.slice(0, 500) });
+      return { ok: false as const, error: m2 };
+    }
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }
+}
+
+/** 配音準備：回每一場的音檔與長度 */
+async function prepareVoice(job: Job, it: Item, scenes: { narration: string }[], spans: readonly (readonly [number, number])[], mode: "tts" | "seller" | "none", dir: string, log: (m: string) => void) {
+  const clips: ({ path: string; dur: number } | undefined)[] = scenes.map(() => undefined);
+  if (mode === "none") return { mode: "none", clips };
+  if (mode === "tts") {
+    let provider = "";
+    for (const [i, sc] of scenes.entries()) {
+      const text = sc.narration?.trim(); if (!text) continue;
+      const tts = await synthesize(text);
+      if (!tts) { provider = ""; break; }
+      provider = tts.provider;
+      const mp3 = path.join(dir, `n${i}.mp3`), wav = path.join(dir, `n${i}.wav`);
+      await fs.writeFile(mp3, tts.audio);
+      await run(["-y", "-i", mp3, "-ac", "1", "-ar", "48000", "-c:a", "pcm_s16le", wav]);
+      const bytes = (await fs.stat(wav)).size - 44;
+      clips[i] = { path: wav, dur: Math.max(0.5, bytes / (48000 * 2)) };
+    }
+    if (provider) { log(`${it.code} 配音 ${provider}`); return { mode: provider, clips }; }
+    log(`${it.code} 沒有 TTS 金鑰，退回賣家原聲`);
+    clips.fill(undefined);
+  }
+  // 賣家原聲：把講這件商品的那一句放在第二場（hero），其餘無口白
+  if (job.video.audioUrl && job.transcript.length && spans.length) {
+    const turns = job.transcript.filter((tu) => spans.some(([s, e]) => tu.startSec < e + 1.5 && s - 1.5 < tu.endSec));
+    const turn = turns.find((t) => t.prices.length) ?? turns[0];
+    if (turn) {
+      const seg = pickSentence(turn.text, it, job.currency);
+      const turnDur = Math.max(0.5, turn.endSec - turn.startSec);
+      const start = Math.max(0, turn.startSec + turnDur * seg.from - 0.15);
+      const dur = Math.min(8, Math.max(1, turnDur * (seg.to - seg.from) + 0.35));
+      const src = await download(job.video.audioUrl, path.join(dir, "audio.wav")).catch(() => undefined);
+      const out = path.join(dir, "voice.wav");
+      if (src) {
+        await run(["-y", "-ss", start.toFixed(2), "-t", dur.toFixed(2), "-i", src, "-af", "afade=t=in:d=0.08,afade=t=out:st=" + Math.max(0, dur - 0.2).toFixed(2) + ":d=0.2", out]).catch(() => undefined);
+        if (await fs.stat(out).then(() => true, () => false)) { clips[Math.min(1, clips.length - 1)] = { path: out, dur }; return { mode: "seller", clips }; }
+      }
+    }
+  }
+  return { mode: "none", clips };
+}
+
+/** v1：去背主角加賣點卡（分鏡失敗時的備援） */
+async function renderItemV1(job: Job, it: Item, a: Asset, spans: readonly (readonly [number, number])[], dir: string, log: (m: string) => void) {
+  const style = (job.style as StyleId) in STYLES ? (job.style as StyleId) : "lifestyle";
+  const shots = a.shots ?? [];
+  const pick = (k: string) => shots.find((s) => s.kind === k)?.url;
+  const dl = async (url: string | undefined, name: string) => (url ? download(url, path.join(dir, name)).catch(() => undefined) : undefined);
+  const cutoutPath = await dl(a.cutoutUrl ?? it.primaryCutoutUrl, "cutout.png");
+  const heroPath = await dl(it.heroUrl ?? pick("threeQuarter") ?? a.studioUrl ?? pick("front"), "hero.img");
+  const lifestylePath = await dl(pick("lifestyle") ?? a.lifestyleUrl, "life.img");
+  const shotPaths = (await Promise.all(["front", "threeQuarter", "side"].map((k, i) => dl(pick(k), `shot${i}.img`)))).filter(Boolean) as string[];
+  const voice = await prepareVoice(job, it, [{ narration: "" }, { narration: "" }], spans, "seller", dir, log);
+  const v = voice.clips[1];
+  const r = await renderAd({
+    code: it.code, title: it.title || it.category, price: it.price, currency: job.currency, storeName: job.shopName || "PanShop", style,
+    hook: a.hook || it.title, sellingPoints: a.sellingPoints?.length ? a.sellingPoints : [it.color, it.material, it.category].filter(Boolean), subtitle: undefined,
+    cutoutPath, heroPath, lifestylePath, shotPaths, voicePath: v?.path, voiceStartSec: v ? 1.6 : undefined, voiceDurSec: v?.dur, workDir: dir,
+  });
+  const stamp = Date.now().toString(36);
+  const [reelUrl, coverUrl] = await Promise.all([putFile(`jobs/${job.code}/items/${stamp}/${it.code}/ad.mp4`, r.mp4), putFile(`jobs/${job.code}/items/${stamp}/${it.code}/cover.png`, r.cover)]);
+  await assetRepo.upsert(it._id!, job._id!, { reelUrl, coverUrl, reelDurationSec: r.durationSec, status: "done" });
+  return { ok: true as const, reelUrl, coverUrl };
 }
 
 /** 從一段口述裡挑出講這件商品的句子，回傳句子文字與它在整段中的字元比例區間 */

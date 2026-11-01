@@ -11,6 +11,8 @@ export const AppSettingsSchema = z.object({
   siteName: z.string().default("PanShop"),
   announcement: z.string().default(""),               // 首頁公告，空白不顯示
   commentModel: z.enum(["spark-open", "spark"]).default("spark-open"),
+  voiceMode: z.enum(["tts", "seller", "none"]).default("tts"),   // 短片配音：專業 TTS、賣家原聲、無口白
+  ttsVoice: z.string().default("female-warm"),                    // OpenAI 備援時對應 voice 名稱
 });
 export type AppSettings = z.infer<typeof AppSettingsSchema>;
 export const DEFAULT_APP_SETTINGS: AppSettings = AppSettingsSchema.parse({});
