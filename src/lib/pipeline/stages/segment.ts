@@ -87,7 +87,7 @@ const segment: StageFn = async ({ job, jobId, log }) => {
       // 最後幾格可能超出可解碼範圍，往前退一點重試
       for (const t of [frame / fps + 0.001, frame / fps - 0.2, dur - 0.5]) {
         if (t < 0 || t > dur) continue;
-        await frameAt(low, t, f, Math.max(v.procWidth!, v.procHeight!)).catch(() => {});
+        await frameAt(low, t, f, Math.min(v.procWidth!, v.procHeight!)).catch(() => {});  // 與代理檔同解析度，不放大
         if (await fs.stat(f).then(() => true, () => false)) break;
       }
       await fs.stat(f).catch(() => { throw new Error(`抽不到影格 ${frame}`); });
@@ -219,9 +219,11 @@ async function cutout(frameFile: string, m: SegmentationMaskRecord, sx: number, 
   const height = Math.min(H - top, Math.max(1, Math.round((m.bounds.bottom - m.bounds.top) * sy)));
   const alphaRaw = Buffer.alloc(rw * rh);
   for (let i = 0; i < raster.length; i++) alphaRaw[i] = raster[i] ? 255 : 0;
+  // 注意：resize／blur 可能把單通道升成三通道，合併前一定要只取一個通道，否則 stride 錯位會出現橫紋
   const alpha = await sharp(alphaRaw, { raw: { width: rw, height: rh, channels: 1 } })
     .resize(width, height, { kernel: "nearest", fit: "fill" })
     .blur(0.6)
+    .extractChannel(0)
     .raw().toBuffer();
   const rgb = await sharp(frameFile).extract({ left, top, width, height }).removeAlpha().raw().toBuffer();
   const rgba = await sharp(rgb, { raw: { width, height, channels: 3 } }).joinChannel(alpha, { raw: { width, height, channels: 1 } }).png().toBuffer();

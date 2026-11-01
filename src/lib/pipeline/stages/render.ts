@@ -26,6 +26,9 @@ const Copy = z.object({
 });
 
 
+/** 模型偶爾夾雜其他文字系統的字（例如西里爾字母），只留中日韓、拉丁、數字、標點與表情符號 */
+const clean = (t: string) => t.replace(/[\u0400-\u04FF\u0500-\u052F\u0600-\u06FF\u0E00-\u0E7F]+/g, "").replace(/[ \t]{2,}/g, " ").trim();
+
 /** stage 8：文案 → 每件一支 9:16 短影片（封面 → 跟著商品的原片片段 → 結尾字卡）→ 目錄 CSV 網址 */
 const render: StageFn = async ({ job, jobId, log }) => {
   const t0 = Date.now();
@@ -40,13 +43,13 @@ const render: StageFn = async ({ job, jobId, log }) => {
   if (needCopy.length) {
     const { data, usd: u } = await sparkJSON({
       schema: Copy, name: "copy", effort: "low", maxTokens: 6000,
-      system: `你是台灣的社群小編，替小賣家寫商品貼文與短影片口白。語氣親切、具體、不浮誇，繁體中文，幣別 ${job.currency}。店名「${job.shopName || "本店"}」。`,
+      system: `你是台灣的社群小編，替小賣家寫商品貼文與短影片口白。語氣親切、具體、不浮誇，只用繁體中文、阿拉伯數字與常見標點，不夾雜其他語言。幣別 ${job.currency}。店名「${job.shopName || "本店"}」。`,
       parts: [{ text: `請替以下每件商品各寫一份：\n${needCopy.map((i) => `- ${i.code}｜${i.title}｜${i.color} ${i.material}｜${i.price != null ? `${job.currency} ${i.price}` : "價格私訊"}｜${i.description}`).join("\n")}` }],
     });
     usd += u;
     for (const c of data.items) {
       const it = needCopy.find((i) => i.code === c.code);
-      if (it) await assetRepo.upsert(it._id!, jobId, { caption: c.caption, voiceover: `${c.hook}\n${c.voiceover}` });
+      if (it) await assetRepo.upsert(it._id!, jobId, { caption: clean(c.caption), voiceover: `${clean(c.hook)}\n${clean(c.voiceover)}` });
     }
   }
   const assets2 = new Map((await assetRepo.forJob(jobId)).map((a) => [String(a.itemId), a]));
