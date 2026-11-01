@@ -62,12 +62,18 @@ export async function renderAdV2(input: AdV2Input): Promise<{ mp4: string; cover
     x.shadowColor = dark ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.3)"; x.shadowBlur = 56; x.shadowOffsetY = 30; x.drawImage(heroImg, pad, pad); return c;
   })() : null;
   const sceneImgs: (Image | null)[] = [];
+  const sceneBlur: (Image | null)[] = [];
   for (const [i, sc] of input.scenes.entries()) {
     if (!sc.imagePath) { sceneImgs.push(null); continue; }
     // 直式畫布：照片類場景先做成 cover 尺寸，白底棚拍類另外處理
     const out = path.join(dir, `scene_${i}.jpg`);
-    await sharp(sc.imagePath).resize(sc.kind === "photo" ? 1296 : 1200, sc.kind === "photo" ? 2304 : 1200, { fit: sc.kind === "photo" ? "cover" : "inside", position: "attention", background: "#ffffff" }).jpeg({ quality: 88 }).toFile(out);
+    await sharp(sc.imagePath).resize(1200, 1200, { fit: "inside" }).jpeg({ quality: 90 }).toFile(out);
     sceneImgs.push(await loadImage(out));
+    if (sc.kind === "photo") {
+      const bo = path.join(dir, `scene_${i}_blur.jpg`);
+      await sharp(sc.imagePath).resize(540, 960, { fit: "cover" }).blur(24).modulate({ brightness: 0.85 }).jpeg({ quality: 80 }).toFile(bo);
+      sceneBlur[i] = await loadImage(bo);
+    } else sceneBlur[i] = null;
   }
   // 棚拍場的背景材質：預先畫一張柔光漸層加細微顆粒
   const bgTex = (() => {
@@ -131,23 +137,28 @@ export async function renderAdV2(input: AdV2Input): Promise<{ mp4: string; cover
     const m = motionAt(sc.motion, prog);
     const img = sceneImgs[i];
     if (sc.kind === "photo" && img) {
-      ctx.save(); ctx.translate(W / 2 + m.dx, H / 2 + m.dy); ctx.rotate(m.rot); ctx.scale(m.scale, m.scale);
-      const s = Math.max(W / img.width, H / img.height); ctx.drawImage(img, (-img.width * s) / 2, (-img.height * s) / 2, img.width * s, img.height * s); ctx.restore();
+      const blur = sceneBlur[i];
+      if (blur) { const bs = Math.max(W / blur.width, H / blur.height) * 1.05; ctx.drawImage(blur, (W - blur.width * bs) / 2, (H - blur.height * bs) / 2, blur.width * bs, blur.height * bs); }
+      const fs0 = (W / img.width) * m.scale;
+      ctx.save(); ctx.translate(W / 2 + m.dx, H * 0.45 + m.dy); ctx.rotate(m.rot);
+      ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 50; ctx.shadowOffsetY = 20;
+      ctx.drawImage(img, (-img.width * fs0) / 2, (-img.height * fs0) / 2, img.width * fs0, img.height * fs0); ctx.restore();
       // 輕微暗角
       const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.28)"); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
     } else {
       ctx.drawImage(bgTex, 0, 0);
       const gx = W * (0.3 + 0.4 * prog), gy = H * 0.35;
       const rg = ctx.createRadialGradient(gx, gy, 10, gx, gy, 800); rg.addColorStop(0, dark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.45)"); rg.addColorStop(1, "rgba(255,255,255,0)"); ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
-      const subject = heroShadow ?? img;
+      const subject = (img ?? heroShadow) as unknown as Image | null;
       if (subject) {
-        const box = W * (sc.overlay === "price" ? 0.62 : 0.86);
-        const cy = sc.overlay === "price" ? H * 0.32 : H * 0.47;
-        const sImg = subject as unknown as Image;
-        const s = Math.min(box / sImg.width, box / sImg.height) * m.scale;
+        const box = W * (sc.overlay === "price" ? 0.62 : 0.92);
+        const cy = sc.overlay === "price" ? H * 0.32 : H * 0.45;
+        const sz = Math.min(box / subject.width, box / subject.height) * m.scale;
         ctx.save(); ctx.translate(W / 2 + m.dx, cy + m.dy + Math.sin(local * 1.4) * 6); ctx.rotate(m.rot);
-        if (!heroShadow && img) { rr(ctx, (-img.width * s) / 2 - 24, (-img.height * s) / 2 - 24, img.width * s + 48, img.height * s + 48, 40); ctx.fillStyle = "#fff"; ctx.shadowColor = "rgba(0,0,0,0.25)"; ctx.shadowBlur = 50; ctx.shadowOffsetY = 24; ctx.fill(); ctx.shadowColor = "transparent"; }
-        ctx.drawImage(sImg, (-sImg.width * s) / 2, (-sImg.height * s) / 2, sImg.width * s, sImg.height * s); ctx.restore();
+        if (img && dark) { rr(ctx, (-img.width * sz) / 2 - 24, (-img.height * sz) / 2 - 24, img.width * sz + 48, img.height * sz + 48, 40); ctx.fillStyle = "#fff"; ctx.fill(); }
+        else if (img) ctx.globalCompositeOperation = "multiply";
+        ctx.drawImage(subject, (-subject.width * sz) / 2, (-subject.height * sz) / 2, subject.width * sz, subject.height * sz);
+        ctx.restore();
       }
     }
     header();

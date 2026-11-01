@@ -121,7 +121,7 @@ export async function renderItem(job: Job, it: Item, a: Asset, spans: readonly (
       cursor += dur;
     }
     const r = await renderAdV2({ code: it.code, title: it.title || it.category, price: it.price, currency: job.currency, storeName: job.shopName || "PanShop", style,
-      hook: sb.hook || a.hook || it.title, cta: sb.cta, cutoutPath, scenes, workDir: dir });
+      hook: sb.hook || a.hook || it.title, cta: `留言 ${it.code} 取得連結`, cutoutPath, scenes, workDir: dir });
     const stamp = Date.now().toString(36);
     const [reelUrl, coverUrl] = await Promise.all([
       putFile(`jobs/${job.code}/items/${stamp}/${it.code}/ad.mp4`, r.mp4),
