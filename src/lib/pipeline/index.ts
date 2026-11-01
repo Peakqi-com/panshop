@@ -3,7 +3,8 @@ import { jobs } from "@/repositories/jobs";
 import { AUTO_STAGES, PRODUCE_STAGES, STAGES, type Job, type Stage } from "@/models/job";
 
 export type StageContext = { job: Job; jobId: ObjectId; log: (msg: string) => void };
-export type StageFn = (ctx: StageContext) => Promise<{ note?: string } | void>;
+/** again=true 表示這個 stage 還沒做完（時間用完），要再被呼叫一次繼續 */
+export type StageFn = (ctx: StageContext) => Promise<{ note?: string; again?: boolean } | void>;
 
 const impls: Partial<Record<Stage, () => Promise<{ default: StageFn }>>> = {
   extract: () => import("./stages/extract"),
@@ -42,6 +43,10 @@ export async function runStage(jobIdStr: string, stage: Stage): Promise<{ ok: bo
     const { default: fn } = await loader();
     const fresh = (await jobs.byId(jobId))!;
     const r = await fn({ job: fresh, jobId, log: (m) => console.log(`[${job.code}][${stage}] ${m}`) });
+    if (r?.again) {
+      await jobs.setStage(jobId, stage, { status: "running", note: r.note });
+      return { ok: true, next: stage };
+    }
     await jobs.setStage(jobId, stage, { status: "done", finishedAt: new Date(), ms: Date.now() - started, note: r?.note });
     const next = nextStage(stage, chain);
     if (!next) {
