@@ -8,7 +8,7 @@ import { settings } from "@/repositories/settings";
 import { jobs } from "@/repositories/jobs";
 import { triggerStage } from "@/lib/pipeline";
 import { STAGES, AUTO_STAGES, PRODUCE_STAGES, type Stage } from "@/lib/stages";
-import { delPrefix } from "@/lib/blob";
+import { delPrefix, delBlob } from "@/lib/blob";
 import { getDb } from "@/lib/db";
 import { sparkText } from "@/lib/meta";
 import { sparkOpenChat } from "@/lib/baseten";
@@ -67,15 +67,31 @@ export async function retryStageAction(jobId: string, stage: Stage) {
   revalidatePath(`/admin/jobs/${jobId}`);
 }
 
-export async function deleteJobAction(formData: FormData) {
-  await guard();
-  const id = String(formData.get("id"));
+/** 刪一個工作：資料庫紀錄、處理產生的 Blob、以及上傳的原始影片（範例影片除外） */
+async function deleteOne(id: string) {
   const job = await jobs.byId(id);
   if (!job) return;
   await delPrefix(`jobs/${job.code}/`).catch(() => 0);
+  const cfg = await settings.get();
+  const sample = cfg.sampleVideoUrl || process.env.SAMPLE_VIDEO_URL;
+  const src = job.video.originalUrl;
+  if (src && src !== sample && /\.public\.blob\.vercel-storage\.com\//.test(src)) await delBlob(src).catch(() => undefined);
   await jobs.remove(id);
+}
+
+export async function deleteJobAction(formData: FormData) {
+  await guard();
+  await deleteOne(String(formData.get("id")));
   revalidatePath("/admin/jobs");
   redirect("/admin/jobs");
+}
+
+export async function deleteJobsAction(ids: string[]) {
+  await guard();
+  for (const id of ids) await deleteOne(id);
+  revalidatePath("/admin/jobs");
+  revalidatePath("/admin");
+  return ids.length;
 }
 
 export type HealthRow = { name: string; ok: boolean; ms: number; detail: string };

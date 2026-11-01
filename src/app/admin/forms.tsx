@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { loginAction, saveSettingAction, saveAppSettingsAction, retryStageAction, deleteJobAction, runHealthAction, type HealthRow } from "./actions";
+import { loginAction, saveSettingAction, saveAppSettingsAction, retryStageAction, deleteJobAction, deleteJobsAction, runHealthAction, type HealthRow } from "./actions";
+import { useRouter } from "next/navigation";
 import { STAGES, STAGE_LABEL, type Stage } from "@/lib/stages";
 import { STYLES, type StyleId } from "@/lib/config";
 import type { AppSettings } from "@/models/setting";
@@ -109,6 +110,22 @@ export function HealthPanel() {
           </tbody>
         </table>
       )}
+    </div>
+  );
+}
+
+/** 工作列表的勾選刪除：勾選後要再按一次「確定刪除」才會真的刪 */
+export function BulkDelete({ ids }: { ids: string[] }) {
+  const [armed, setArmed] = useState(false);
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  if (!ids.length) return <span className="text-xs text-stone-400">勾選左側的工作可批次刪除</span>;
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      <span className="text-stone-600">已選 {ids.length} 個</span>
+      {!armed ? <button type="button" onClick={() => setArmed(true)} className="btn btn-ghost text-red-700">刪除選取</button>
+        : <button type="button" disabled={pending} onClick={() => start(async () => { await deleteJobsAction(ids); setArmed(false); router.refresh(); })} className="btn bg-red-600 text-white">{pending ? "刪除中…" : `確定刪除 ${ids.length} 個（含影片與產出）`}</button>}
+      {armed && <button type="button" onClick={() => setArmed(false)} className="text-xs text-stone-500">取消</button>}
     </div>
   );
 }
