@@ -6,7 +6,11 @@ export const AssetSchema = z.object({
   itemId: z.instanceof(ObjectId),
   jobId: z.instanceof(ObjectId),
   cutoutUrl: z.string().url().optional(),     // SAM 遮罩去背（確認表與後台用，不進商品卡）
-  shots: z.array(z.object({ kind: z.string(), label: z.string(), url: z.string().url() })).default([]),  // 多角度商品圖：front、threeQuarter、side、lifestyle
+  shots: z.array(z.object({ kind: z.string(), label: z.string(), url: z.string().url(), qa: z.string().optional() })).default([]),  // 多角度商品圖：front、threeQuarter、side、lifestyle
+  brief: z.object({                                   // 視覺簡報（Spark 依裁圖寫，生圖與短片共用）
+    subject: z.string(), materialNotes: z.string(), scene: z.string(), props: z.string(), lighting: z.string(), palette: z.string(),
+    shots: z.array(z.object({ kind: z.string(), camera: z.string(), scene: z.string() })),
+  }).optional(),
   studioUrl: z.string().url().optional(),     // Muse Image 棚拍白底
   lifestyleUrl: z.string().url().optional(),  // Muse Image 情境圖
   coverUrl: z.string().url().optional(),      // Reels 封面

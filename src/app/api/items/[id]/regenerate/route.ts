@@ -24,7 +24,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const job = await jobs.byId(it.jobId);
   if (!job?._id) return Response.json({ error: "job not found" }, { status: 404 });
   const style = b.data.style && b.data.style in STYLES ? (b.data.style as StyleId) : undefined;
-  const r = await shootItem(job, it, { which: b.data.which, hint: b.data.hint?.trim() || undefined, style, variation: Math.floor(Math.random() * 6) });
+  const r = await shootItem(job, it, { which: b.data.which, hint: b.data.hint?.trim() || undefined, style, variation: Math.floor(Math.random() * 6), log: (m) => console.log(`[${job.code}][regen] ${m}`) });
   await jobs.addCost(job._id, r.usd);
   return Response.json({ ok: r.errors.length === 0, errors: r.errors, ...r.set });
 }
