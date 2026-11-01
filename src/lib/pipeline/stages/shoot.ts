@@ -26,7 +26,8 @@ type BriefT = z.infer<typeof Brief>;
 
 const QA = z.object({
   ok: z.boolean().describe("生成圖裡的商品與參考圖是否為同一件（形狀、顏色、材質、把手或配件、標籤圖案都一致），且沒有多出文字、浮水印、人臉、第二件商品"),
-  issues: z.array(z.string()).describe("不一致的地方，英文短句，給重生時修正用；ok 就空陣列"),
+  angleOk: z.boolean().describe("鏡位是否符合要求（例如要求正面就必須看到正面而不是側面）"),
+  issues: z.array(z.string()).describe("不一致或角度不符的地方，英文短句，給重生時修正用；都沒問題就空陣列"),
   score: z.number().describe("0 到 1 的忠實度"),
 });
 
@@ -44,11 +45,11 @@ async function writeBrief(it: Item, styleLabel: string, styleHint: string, refs:
 }
 
 /** 品管：Spark 比對生成圖與參考圖是不是同一件 */
-async function qaShot(url: string, refs: string[], subject: string): Promise<{ qa: z.infer<typeof QA>; usd: number }> {
+async function qaShot(url: string, refs: string[], subject: string, angle: string): Promise<{ qa: z.infer<typeof QA>; usd: number }> {
   const { data, usd } = await sparkJSON({
     schema: QA, name: "shot_qa", effort: "low",
-    system: "你是商品圖品管。第一張是生成圖，其餘是同一件商品的參考裁圖。判斷生成圖裡的商品是否與參考圖為同一件實體（同形狀、同顏色、同材質、同配件與圖案），並檢查有沒有多出文字、浮水印、人臉或第二件商品。只看商品本體，背景與角度不同是正常的。",
-    parts: [{ text: `商品：${subject}。第一張是生成圖，之後是參考圖。` }, { imageUrl: url }, ...refs.map((u) => ({ imageUrl: u }))],
+    system: "你是商品圖品管。第一張是生成圖，其餘是同一件商品的參考裁圖。兩件事：一、生成圖裡的商品是否與參考圖為同一件實體（同形狀、同顏色、同材質、同配件與圖案），有沒有多出文字、浮水印、人臉或第二件商品；二、鏡位是否符合要求。背景不同是正常的；角度不同如果是要求的就是正確的。",
+    parts: [{ text: `商品：${subject}。要求的鏡位：${angle}。第一張是生成圖，之後是參考圖。` }, { imageUrl: url }, ...refs.map((u) => ({ imageUrl: u }))],
   });
   return { qa: data, usd };
 }
@@ -75,7 +76,8 @@ export async function shootItem(job: Job, it: Item, opts: { which: "studio" | "l
     catch (e) { log(`${it.code} 視覺簡報失敗，用預設：${(e as Error).message.slice(0, 80)}`); }
   }
   const subject = brief?.subject ?? `${it.title || it.category}${it.color ? `, ${it.color}` : ""}${it.material ? `, ${it.material}` : ""}`;
-  const shotPlan = (brief?.shots?.length === 4 ? brief.shots : [
+  const briefShots = brief?.shots?.length === 4 ? brief.shots.map((sh) => ({ ...sh, camera: ANGLES.find((a) => a.kind === sh.kind)?.hint ?? sh.camera })) : null;
+  const shotPlan = (briefShots ?? [
     ...ANGLES.map((a) => ({ kind: a.kind, camera: a.hint, scene: "seamless pure white background" })),
     { kind: "lifestyle", camera: "three-quarter view at eye level, 50mm, product occupies 55% of frame", scene: it.sceneHint || SCENE_VARIATIONS[(opts.variation ?? 0) % SCENE_VARIATIONS.length] },
   ]).filter((sh) => opts.which === "both" || (opts.which === "lifestyle" ? sh.kind === "lifestyle" : sh.kind !== "lifestyle"));
@@ -85,19 +87,21 @@ export async function shootItem(job: Job, it: Item, opts: { which: "studio" | "l
     const isLife = sh.kind === "lifestyle";
     const label = isLife ? "情境" : (ANGLES.find((a) => a.kind === sh.kind)?.label ?? sh.kind);
     let fix = "";
-    let best: { url: string; qa: string } | null = null;
+    let best: { url: string; rank: number; qa: string } | null = null;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const prompt = isLife ? lifestylePrompt(subject, brief, style.hint, sh, opts.hint, fix) : studioPrompt(subject, brief, sh, opts.hint, fix);
         const r = await imageEdit({ prompt, images: refs, size: "1024x1024", format: isLife ? "jpeg" : "png" });
         usd += r.usd;
         const url = await putBlob(`jobs/${job.code}/items/${stamp}/${it.code}/${sh.kind}${attempt ? "-r" : ""}.${isLife ? "jpg" : "png"}`, r.images[0]);
-        const { qa, usd: qu } = await qaShot(url, refs.slice(0, 3), subject);
+        const { qa, usd: qu } = await qaShot(url, refs.slice(0, 3), subject, isLife ? "lifestyle, any flattering angle" : sh.camera);
         usd += qu;
-        log(`${it.code} ${label} 第 ${attempt + 1} 次 品管 ${qa.ok ? "通過" : "不通過"} ${qa.score.toFixed(2)} ${qa.issues.join("; ").slice(0, 120)}`);
-        if (!best || qa.score > Number(best.qa.split("|")[0] || 0)) best = { url, qa: `${qa.score.toFixed(2)}|${qa.ok ? "pass" : qa.issues.join("; ").slice(0, 160)}` };
-        if (qa.ok) break;
-        fix = `Previous attempt was rejected because: ${qa.issues.join("; ")}. Correct these while keeping everything else.`;
+        const pass = qa.ok && (isLife || qa.angleOk);
+        log(`${it.code} ${label} 第 ${attempt + 1} 次 品管 ${pass ? "通過" : "不通過"} 忠實 ${qa.score.toFixed(2)} 角度 ${qa.angleOk ? "對" : "錯"} ${qa.issues.join("; ").slice(0, 120)}`);
+        const rank = qa.score + (pass ? 1 : 0);
+        if (!best || rank > best.rank) best = { url, rank, qa: `${qa.score.toFixed(2)}|${pass ? "pass" : qa.issues.join("; ").slice(0, 160)}` };
+        if (pass) break;
+        fix = `The previous attempt was rejected: ${qa.issues.join("; ")}. ${!qa.angleOk ? `Rotate the camera so the view is exactly: ${sh.camera}` : ""} Keep the product identical and fix only these points.`;
       } catch (e) { errors.push(`${label}：${(e as Error).message.slice(0, 100)}`); break; }
     }
     return best ? { kind: sh.kind, label, url: best.url, qa: best.qa } : null;
@@ -165,9 +169,9 @@ const NO_TEXT = "Do not add any text, letters, numbers, captions, watermarks, lo
 
 function studioPrompt(subject: string, brief: BriefT | undefined, sh: { camera: string; scene: string }, hint?: string, fix = "") {
   return [
-    `Professional e-commerce studio photograph of ${subject}.`,
+    `${sh.camera}`,
+    `Professional e-commerce studio photograph of ${subject}. The camera has moved to the view described above; the product itself is unchanged.`,
     brief?.materialNotes ? `Material: ${brief.materialNotes}.` : "",
-    `Camera: ${sh.camera}.`,
     `Background: seamless pure white, softbox lighting from the upper left with a soft fill, a gentle natural contact shadow under the product, true-to-life colors, sharp focus, square format.`,
     FIDELITY, NO_TEXT,
     hint ? `Additional direction from the seller: ${hint}.` : "",

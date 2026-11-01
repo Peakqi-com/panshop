@@ -49,9 +49,9 @@ export const SCENE_VARIATIONS = [
   "golden-hour side light with long soft shadows",
 ];
 
-/** 商品圖角度：棚拍三個角度加一張情境 */
+/** 商品圖角度：棚拍三個角度加一張情境。描述要寫「看得到什麼、看不到什麼」，影像編輯模型才會真的轉鏡頭 */
 export const ANGLES = [
-  { kind: "front", label: "正面", hint: "straight-on front view, the product facing the camera" },
-  { kind: "threeQuarter", label: "四十五度", hint: "three-quarter hero angle from slightly above, showing the front and one side" },
-  { kind: "side", label: "側面", hint: "clean side profile view" },
+  { kind: "front", label: "正面", hint: "FRONT VIEW: the camera looks straight at the front face of the product (for a shoe the toe points at the camera; for a mug the handle is hidden behind or to the side; for a book the cover faces the camera squarely). The long side is foreshortened. Eye level." },
+  { kind: "threeQuarter", label: "四十五度", hint: "THREE-QUARTER VIEW: the product is rotated 45 degrees between front and side, camera slightly above eye level, so both the front face and one long side are visible at once." },
+  { kind: "side", label: "側面", hint: "SIDE PROFILE VIEW: pure lateral view at eye level, the full length of the product visible as a silhouette, the front face not visible." },
 ] as const;
