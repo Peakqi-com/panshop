@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  turbopack: { rules: { "*.css": { loaders: ["@tailwindcss/turbopack"], as: "*.css" } } },
   serverExternalPackages: ["mongodb", "ffmpeg-static", "sharp", "@meta-sam/parser", "opencc-js", "@napi-rs/canvas"],
   outputFileTracingIncludes: {
     "/api/jobs/[id]/run": ["./node_modules/ffmpeg-static/ffmpeg", "./src/assets/fonts/**"],

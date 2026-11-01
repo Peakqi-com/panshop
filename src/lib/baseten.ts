@@ -14,7 +14,7 @@ export async function sparkOpenChat(opts: { system?: string; user: string; maxTo
     body: JSON.stringify({
       model,
       messages: [...(opts.system ? [{ role: "system", content: opts.system }] : []), { role: "user", content: opts.user }],
-      max_tokens: opts.maxTokens ?? 600,
+      max_tokens: opts.maxTokens ?? 1500,
       temperature: opts.temperature ?? 0.2,
     }),
   });

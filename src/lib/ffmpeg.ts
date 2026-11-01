@@ -61,6 +61,7 @@ export async function transcodeLowFps(input: string, output: string, fps = 4, ma
     "-y", "-i", input,
     "-vf", `fps=${fps},scale='if(gt(iw,ih),-2,${maxShort})':'if(gt(iw,ih),${maxShort},-2)'`,
     "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
+    "-g", String(fps * 2), "-keyint_min", String(fps * 2),   // 每 2 秒一個關鍵格，之後逐格 seek 才快
     "-movflags", "+faststart", "-an", output,
   ]);
   return output;

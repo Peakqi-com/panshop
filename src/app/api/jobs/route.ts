@@ -8,7 +8,8 @@ import { checkUploadPasscode } from "@/lib/auth";
 const code = customAlphabet("abcdefghjkmnpqrstuvwxyz23456789", 10);
 
 const Body = z.object({
-  videoUrl: z.string().url(),
+  sample: z.boolean().optional(),
+  videoUrl: z.string().url().optional(),
   fileName: z.string().optional(),
   bytes: z.number().optional(),
   shopName: z.string().max(60).default(""),
@@ -22,13 +23,15 @@ export async function POST(req: Request) {
   if (!parsed.success) return Response.json({ error: "參數不對" }, { status: 400 });
   const b = parsed.data;
   if (!checkUploadPasscode(b.passcode)) return Response.json({ error: "通行碼不對" }, { status: 403 });
+  const videoUrl = b.sample ? process.env.SAMPLE_VIDEO_URL : b.videoUrl;
+  if (!videoUrl) return Response.json({ error: b.sample ? "沒有設定範例影片" : "缺少影片" }, { status: 400 });
   const job = await jobs.create({
     code: code(),
     status: "uploaded",
-    shopName: b.shopName,
+    shopName: b.shopName || (b.sample ? "範例：桌上八件" : ""),
     currency: b.currency,
     language: "zh-TW",
-    video: { originalUrl: b.videoUrl, fileName: b.fileName, bytes: b.bytes, procFps: 4 },
+    video: { originalUrl: videoUrl, fileName: b.sample ? "sample.mp4" : b.fileName, bytes: b.bytes, procFps: 4 },
     frames: [], categories: [], transcript: [], stages: {} as never, metrics: {},
   });
   const id = String(job._id);

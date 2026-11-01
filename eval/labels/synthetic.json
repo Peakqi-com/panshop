@@ -1,0 +1,62 @@
+{
+  "video": "eval/footage/synthetic.mp4",
+  "durationSec": 80.8,
+  "items": [
+    {
+      "code": "A1",
+      "category": "馬克杯",
+      "phrase": "mug",
+      "title": "霧面白色陶瓷馬克杯",
+      "price": 380
+    },
+    {
+      "code": "A2",
+      "category": "馬克杯",
+      "phrase": "mug",
+      "title": "深藍色琺瑯馬克杯",
+      "price": 420
+    },
+    {
+      "code": "A3",
+      "category": "馬克杯",
+      "phrase": "mug",
+      "title": "黃色條紋玻璃馬克杯",
+      "price": 350
+    },
+    {
+      "code": "B1",
+      "category": "書",
+      "phrase": "book",
+      "title": "綠色精裝筆記本",
+      "price": 290
+    },
+    {
+      "code": "B2",
+      "category": "書",
+      "phrase": "book",
+      "title": "橘色封面平裝書",
+      "price": 320
+    },
+    {
+      "code": "B3",
+      "category": "書",
+      "phrase": "book",
+      "title": "黑色皮革日誌本",
+      "price": 680
+    },
+    {
+      "code": "C1",
+      "category": "運動鞋",
+      "phrase": "sneaker",
+      "title": "白色帆布休閒鞋",
+      "price": 1280
+    },
+    {
+      "code": "C2",
+      "category": "運動鞋",
+      "phrase": "sneaker",
+      "title": "紅色慢跑鞋",
+      "price": 1980
+    }
+  ]
+}

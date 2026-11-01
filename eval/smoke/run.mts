@@ -1,21 +1,22 @@
 /**
  * 模型煙霧測試。用法（金鑰從 .env.local 或 /admin）：
- *   node --env-file=.env.local --import tsx eval/smoke/run.ts spark
- *   node --env-file=.env.local --import tsx eval/smoke/run.ts voice <wav 或任何音訊檔>
- *   node --env-file=.env.local --import tsx eval/smoke/run.ts image
- *   node --env-file=.env.local --import tsx eval/smoke/run.ts sam-image <jpg> <phrase>
- *   node --env-file=.env.local --import tsx eval/smoke/run.ts sam-video <mp4> <phrase>
- *   node --env-file=.env.local --import tsx eval/smoke/run.ts baseten
+ *   node --env-file=.env.local --import tsx eval/smoke/run.mts spark
+ *   node --env-file=.env.local --import tsx eval/smoke/run.mts voice <wav 或任何音訊檔>
+ *   node --env-file=.env.local --import tsx eval/smoke/run.mts image
+ *   node --env-file=.env.local --import tsx eval/smoke/run.mts sam-image <jpg> <phrase>
+ *   node --env-file=.env.local --import tsx eval/smoke/run.mts sam-video <mp4> <phrase>
+ *   node --env-file=.env.local --import tsx eval/smoke/run.mts baseten
  */
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
-import { recordsOfKind } from "@meta-sam/parser";
+import { samParser } from "../../src/lib/sam-parser";
 import { imageGenerate, samImage, samVideo, sparkJSON, transcribe, uploadFile } from "../../src/lib/meta";
 import { sparkOpenChat } from "../../src/lib/baseten";
 import { extractWav, probe, tmpDir, transcodeLowFps } from "../../src/lib/ffmpeg";
 
 const [cmd, a1, a2] = process.argv.slice(2);
+const { recordsOfKind } = await samParser();
 const out = path.join("eval", "smoke", "_out");
 await fs.mkdir(out, { recursive: true });
 const t0 = Date.now();

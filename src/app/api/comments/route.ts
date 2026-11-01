@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   const t0 = Date.now();
   let out: z.infer<typeof Out> | null = null, model = "";
   try {
-    const r = await sparkOpenChat({ system, user, maxTokens: 300 });
+    const r = await sparkOpenChat({ system, user, maxTokens: 1500 });
     const j = extractJSON(r.text);
     const v = Out.safeParse(j);
     if (v.success) { out = v.data; model = r.model; }

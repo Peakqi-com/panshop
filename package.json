@@ -9,7 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "indexes": "tsx scripts/ensure-indexes.ts",
-    "smoke": "tsx eval/smoke/run.ts"
+    "smoke": "tsx eval/smoke/run.mts"
   },
   "dependencies": {
     "@meta-sam/parser": "^0.1.0",

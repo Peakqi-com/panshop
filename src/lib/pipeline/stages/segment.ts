@@ -1,7 +1,8 @@
 import path from "node:path";
 import { promises as fs } from "node:fs";
 import sharp from "sharp";
-import { decodeMaskToRaster, recordsOfKind, type SegmentationMaskRecord } from "@meta-sam/parser";
+import type { SegmentationMaskRecord } from "@meta-sam/parser";
+import { samParser, type SamParser } from "@/lib/sam-parser";
 import type { StageFn } from "@/lib/pipeline";
 import { samVideo, uploadFile } from "@/lib/meta";
 import { download, frameAt, tmpDir } from "@/lib/ffmpeg";
@@ -30,6 +31,7 @@ const segment: StageFn = async ({ job, jobId, log }) => {
   const fps = v.procFps || PIPE.procFps;
   const totalFrames = Math.ceil((v.durationSec ?? 0) * fps);
 
+  const { recordsOfKind, decodeMaskToRaster } = await samParser();
   const dir = await tmpDir();
   try {
     const low = path.join(dir, "proc.mp4");
@@ -61,14 +63,19 @@ const segment: StageFn = async ({ job, jobId, log }) => {
       }
       for (const [objectId, list] of byObj) {
         list.sort((a, b) => a.frame - b.frame);
-        const meanConf = list.reduce((s, b) => s + (b.conf ?? 0.7), 0) / list.length;
-        const meanArea = list.reduce((s, b) => s + ((b.x2 - b.x1) * (b.y2 - b.y1)) / (b.w * b.h), 0) / list.length;
-        const dur = list[list.length - 1].t - list[0].t + 1 / fps;
-        if (dur < PIPE.minTrackSec || meanArea < PIPE.minTrackArea || meanConf < PIPE.minTrackConf) continue;
-        drafts.push({ jobId, category: cat.name, samObjectId: objectId, startSec: list[0].t, endSec: list[list.length - 1].t + 1 / fps, boxes: list, crops: [], cutouts: [], meanConf, meanArea });
+        // 同一個 SAM ID 若中間斷掉太久或框突然跳走，視為不同段（SAM 的 ID 會在物件出鏡後被別的物件接走）
+        for (const [k, seg] of splitTrack(list, fps).entries()) {
+          const meanConf = seg.reduce((s, b) => s + (b.conf ?? 0.7), 0) / seg.length;
+          const meanArea = seg.reduce((s, b) => s + area(b), 0) / seg.length;
+          const dur = seg[seg.length - 1].t - seg[0].t + 1 / fps;
+          if (dur < PIPE.minTrackSec || meanArea < PIPE.minTrackArea || meanConf < PIPE.minTrackConf) continue;
+          drafts.push({ jobId, category: cat.name, samObjectId: k ? `${objectId}-${k}` : objectId, startSec: seg[0].t, endSec: seg[seg.length - 1].t + 1 / fps, boxes: seg, crops: [], cutouts: [], meanConf, meanArea });
+        }
       }
     }
-    log(`${drafts.length} tracks after filtering`);
+    const before = drafts.length;
+    pruneTracks(drafts, log);
+    log(`${before} → ${drafts.length} tracks after split/prune`);
 
     // 裁圖與去背：每條 track 取 cropsPerTrack 個相隔 ≥0.5 秒的最佳影格
     const frameCache = new Map<number, string>();
@@ -76,11 +83,20 @@ const segment: StageFn = async ({ job, jobId, log }) => {
       const hit = frameCache.get(frame);
       if (hit) return hit;
       const f = path.join(dir, `f_${frame}.png`);
-      await frameAt(low, frame / fps + 0.001, f, Math.max(v.procWidth!, v.procHeight!));
+      const dur = v.durationSec ?? Infinity;
+      // 最後幾格可能超出可解碼範圍，往前退一點重試
+      for (const t of [frame / fps + 0.001, frame / fps - 0.2, dur - 0.5]) {
+        if (t < 0 || t > dur) continue;
+        await frameAt(low, t, f, Math.max(v.procWidth!, v.procHeight!)).catch(() => {});
+        if (await fs.stat(f).then(() => true, () => false)) break;
+      }
+      await fs.stat(f).catch(() => { throw new Error(`抽不到影格 ${frame}`); });
       frameCache.set(frame, f);
       return f;
     };
 
+    const uploads: Promise<void>[] = [];
+    const tCrop = Date.now();
     for (let ti = 0; ti < drafts.length; ti++) {
       const tr = drafts[ti];
       const ranked = [...tr.boxes].sort((a, b) => score(b) - score(a));
@@ -104,19 +120,23 @@ const segment: StageFn = async ({ job, jobId, log }) => {
         const width = Math.min(W - left, Math.ceil(bw + 2 * m)), height = Math.min(H - top, Math.ceil(bh + 2 * m));
         if (width < 8 || height < 8) continue;
         const cropBuf = await sharp(file).extract({ left, top, width, height }).jpeg({ quality: 90 }).toBuffer();
-        tr.crops.push({ t: b.t, url: await putBlob(`${key}/crop_${k}.jpg`, cropBuf) });
+        uploads.push(putBlob(`${key}/crop_${k}.jpg`, cropBuf).then((url) => { tr.crops.push({ t: b.t, url }); }));
 
-        const mrec = maskIndex.get(`${tr.category}|${tr.samObjectId}|${b.frame}`);
+        const mrec = maskIndex.get(`${tr.category}|${tr.samObjectId.split("-")[0]}|${b.frame}`);
         if (mrec) {
           try {
-            const cut = await cutout(file, mrec, sx, sy, W, H);
-            tr.cutouts.push({ t: b.t, url: await putBlob(`${key}/cutout_${k}.png`, cut) });
+            const cut = await cutout(file, mrec, sx, sy, W, H, decodeMaskToRaster);
+            uploads.push(putBlob(`${key}/cutout_${k}.png`, cut).then((url) => { tr.cutouts.push({ t: b.t, url }); }));
           } catch (e) {
             log(`cutout 失敗 track ${ti} frame ${b.frame}: ${(e as Error).message}`);
           }
         }
+        if (uploads.length >= 8) { await Promise.all(uploads); uploads.length = 0; }
       }
     }
+    await Promise.all(uploads);
+    for (const tr of drafts) { tr.crops.sort((a, b) => a.t - b.t); tr.cutouts.sort((a, b) => a.t - b.t); }
+    log(`crops done in ${Date.now() - tCrop}ms`);
 
     const saved = await trackRepo.replaceForJob(jobId, drafts);
     await jobs.addCost(jobId, usdTotal);
@@ -128,8 +148,70 @@ const segment: StageFn = async ({ job, jobId, log }) => {
 };
 export default segment;
 
+const area = (b: Box) => ((b.x2 - b.x1) * (b.y2 - b.y1)) / (b.w * b.h);
+
+/** 在時間斷點（缺格 ≥ 1.5 秒）或空間跳躍（中心移動超過半個畫面且尺寸變化 2 倍以上）處切開 */
+function splitTrack(list: Box[], fps: number): Box[][] {
+  const segs: Box[][] = [];
+  let cur: Box[] = [];
+  for (const b of list) {
+    const prev = cur[cur.length - 1];
+    if (prev) {
+      const gap = (b.frame - prev.frame) / fps;
+      const dx = Math.abs((b.x1 + b.x2) / 2 - (prev.x1 + prev.x2) / 2) / b.w;
+      const ratio = area(b) / Math.max(1e-6, area(prev));
+      if (gap >= 1.5 || (dx > 0.5 && (ratio > 2 || ratio < 0.5))) { segs.push(cur); cur = []; }
+    }
+    cur.push(b);
+  }
+  if (cur.length) segs.push(cur);
+  return segs;
+}
+
+/** 兩條 track 在共同影格上的平均 IoU 與「A 被 B 包含的比例」 */
+function overlapStats(a: Draft, b: Draft) {
+  const bByFrame = new Map(b.boxes.map((x) => [x.frame, x]));
+  let n = 0, iou = 0, contain = 0;
+  for (const x of a.boxes) {
+    const y = bByFrame.get(x.frame);
+    if (!y) continue;
+    const ix = Math.max(0, Math.min(x.x2, y.x2) - Math.max(x.x1, y.x1));
+    const iy = Math.max(0, Math.min(x.y2, y.y2) - Math.max(x.y1, y.y1));
+    const inter = ix * iy, ax = (x.x2 - x.x1) * (x.y2 - x.y1), ay = (y.x2 - y.x1) * (y.y2 - y.y1);
+    iou += inter / Math.max(1, ax + ay - inter);
+    contain += inter / Math.max(1, ax);
+    n++;
+  }
+  return n ? { n, iou: iou / n, contain: contain / n, shareOfA: n / a.boxes.length } : null;
+}
+
+/**
+ * 規則：
+ * 1. 同品類：A 大部分時間被 B 包含（把手、瓶蓋這種零件）→ 丟 A
+ * 2. 跨品類：兩條 track 在共同影格高度重疊（同一個東西被兩個名詞片語都抓到）→ 留信心×時長較高的
+ */
+function pruneTracks(drafts: Draft[], log: (m: string) => void) {
+  const drop = new Set<number>();
+  const score = (t: Draft) => (t.meanConf ?? 0.5) * (t.endSec - t.startSec);
+  for (let i = 0; i < drafts.length; i++) for (let j = 0; j < drafts.length; j++) {
+    if (i === j || drop.has(i) || drop.has(j)) continue;
+    const a = drafts[i], b = drafts[j];
+    if (a.startSec >= b.endSec || b.startSec >= a.endSec) continue;
+    const st = overlapStats(a, b);
+    if (!st || st.shareOfA < 0.5) continue;
+    if (a.category === b.category) {
+      if (st.contain > 0.8 && (a.meanArea ?? 0) < (b.meanArea ?? 0)) { drop.add(i); log(`drop ${a.category} ${a.samObjectId}: contained in ${b.samObjectId}`); }
+    } else if (st.iou > 0.5) {
+      const loser = score(a) < score(b) ? i : j;
+      drop.add(loser);
+      log(`drop ${drafts[loser].category} ${drafts[loser].samObjectId}: same object as ${drafts[loser === i ? j : i].category}`);
+    }
+  }
+  for (const i of [...drop].sort((x, y) => y - x)) drafts.splice(i, 1);
+}
+
 /** 用 SAM 遮罩把商品從影格切出、放在白底上（Muse Image 不支援遮罩編輯，所以白底圖先用這個保底） */
-async function cutout(frameFile: string, m: SegmentationMaskRecord, sx: number, sy: number, W: number, H: number): Promise<Buffer> {
+async function cutout(frameFile: string, m: SegmentationMaskRecord, sx: number, sy: number, W: number, H: number, decodeMaskToRaster: SamParser["decodeMaskToRaster"]): Promise<Buffer> {
   const raster = decodeMaskToRaster(m.mask);
   const rw = m.mask.width, rh = m.mask.height;
   const left = Math.max(0, Math.round(m.bounds.left * sx)), top = Math.max(0, Math.round(m.bounds.top * sy));

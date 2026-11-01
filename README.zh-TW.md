@@ -98,10 +98,10 @@ pnpm dev
 模型煙霧測試，每個指令只打一次 Meta Model API：
 
 ```bash
-node --env-file=.env.local --import tsx eval/smoke/run.ts spark
-node --env-file=.env.local --import tsx eval/smoke/run.ts sam-video path/to/clip.mp4 mug
-node --env-file=.env.local --import tsx eval/smoke/run.ts voice path/to/clip.mp4
-node --env-file=.env.local --import tsx eval/smoke/run.ts image
+node --env-file=.env.local --import tsx eval/smoke/run.mts spark
+node --env-file=.env.local --import tsx eval/smoke/run.mts sam-video path/to/clip.mp4 mug
+node --env-file=.env.local --import tsx eval/smoke/run.mts voice path/to/clip.mp4
+node --env-file=.env.local --import tsx eval/smoke/run.mts image
 ```
 
 ## 目錄

@@ -98,10 +98,10 @@ pnpm dev
 Model smoke tests, each one call against the Meta Model API:
 
 ```bash
-node --env-file=.env.local --import tsx eval/smoke/run.ts spark
-node --env-file=.env.local --import tsx eval/smoke/run.ts sam-video path/to/clip.mp4 mug
-node --env-file=.env.local --import tsx eval/smoke/run.ts voice path/to/clip.mp4
-node --env-file=.env.local --import tsx eval/smoke/run.ts image
+node --env-file=.env.local --import tsx eval/smoke/run.mts spark
+node --env-file=.env.local --import tsx eval/smoke/run.mts sam-video path/to/clip.mp4 mug
+node --env-file=.env.local --import tsx eval/smoke/run.mts voice path/to/clip.mp4
+node --env-file=.env.local --import tsx eval/smoke/run.mts image
 ```
 
 ## Repository layout

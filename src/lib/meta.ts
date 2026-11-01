@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { parseVideoStream, parseImageStream, type VideoSegmentationResult, type ImageSegmentationResult } from "@meta-sam/parser";
+import type { VideoSegmentationResult, ImageSegmentationResult } from "@meta-sam/parser";
+import { samParser } from "@/lib/sam-parser";
 import { requireSetting } from "@/lib/settings";
 import { PRICE } from "@/lib/config";
 
@@ -141,6 +142,7 @@ async function samRequest(media: Record<string, unknown>, phrase: string, metada
 /** 影片：一個名詞片語一次請求；回傳解析結果與估算費用 */
 export async function samVideo(opts: { fileId?: string; videoUrl?: string; phrase: string; frames: number }): Promise<{ result: VideoSegmentationResult; usd: number }> {
   const media = opts.fileId ? { type: "input_video", file_id: opts.fileId } : { type: "input_video", video_url: opts.videoUrl };
+  const { parseVideoStream } = await samParser();
   const r = await samRequest(media, opts.phrase, {});
   const parsed = parseVideoStream(sse(r));
   await drain(parsed);
@@ -149,6 +151,7 @@ export async function samVideo(opts: { fileId?: string; videoUrl?: string; phras
 }
 
 export async function samImage(opts: { imageUrl: string; phrase: string }): Promise<{ result: ImageSegmentationResult; usd: number }> {
+  const { parseImageStream } = await samParser();
   const r = await samRequest({ type: "input_image", image_url: opts.imageUrl }, opts.phrase, {});
   const parsed = parseImageStream(sse(r));
   await drain(parsed);

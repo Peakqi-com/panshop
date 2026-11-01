@@ -37,10 +37,17 @@ export async function setSetting(key: SettingKey, value: string, by = "admin") {
 }
 
 export async function listSettings() {
-  const rows = await secrets.list(SYSTEM);
-  return (Object.keys(SETTING_KEYS) as SettingKey[]).map((k) => {
+  let rows: Awaited<ReturnType<typeof secrets.list>> = [];
+  let dbError: string | null = null;
+  try {
+    rows = await secrets.list(SYSTEM);
+  } catch (e) {
+    dbError = e instanceof Error ? e.message : String(e);
+  }
+  const list = (Object.keys(SETTING_KEYS) as SettingKey[]).map((k) => {
     const def = SETTING_KEYS[k];
     const row = rows.find((r) => r.name === def.name);
     return { key: k, label: def.label, env: def.env, hint: row?.hint ?? null, fromEnv: !row && !!process.env[def.env], updatedAt: row?.updatedAt ?? null };
   });
+  return { list, dbError };
 }
