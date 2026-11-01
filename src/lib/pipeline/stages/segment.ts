@@ -230,9 +230,10 @@ async function cutout(frameFile: string, m: SegmentationMaskRecord, sx: number, 
     .raw().toBuffer();
   const rgb = await sharp(frameFile).extract({ left, top, width, height }).removeAlpha().raw().toBuffer();
   const rgba = await sharp(rgb, { raw: { width, height, channels: 3 } }).joinChannel(alpha, { raw: { width, height, channels: 1 } }).png().toBuffer();
+  // 透明背景的正方形 PNG：商品卡顯示在白底上，短片則可以直接放在任何背景
   const pad = Math.round(Math.max(width, height) * PIPE.cutoutPad);
   const side = Math.max(width, height) + pad * 2;
-  return sharp({ create: { width: side, height: side, channels: 3, background: "#ffffff" } })
+  return sharp({ create: { width: side, height: side, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
     .composite([{ input: rgba, left: Math.round((side - width) / 2), top: Math.round((side - height) / 2) }])
     .png().toBuffer();
 }

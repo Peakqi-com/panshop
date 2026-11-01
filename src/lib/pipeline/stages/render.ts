@@ -1,5 +1,6 @@
 import path from "node:path";
 import { promises as fs } from "node:fs";
+import type { ObjectId } from "mongodb";
 import { z } from "zod";
 import type { StageFn } from "@/lib/pipeline";
 import { sparkJSON } from "@/lib/meta";
@@ -9,12 +10,13 @@ import { jobs } from "@/repositories/jobs";
 import { items as itemRepo } from "@/repositories/items";
 import { tracks as trackRepo } from "@/repositories/tracks";
 import { assets as assetRepo } from "@/repositories/assets";
-import type { Track } from "@/models/track";
-import sharp from "sharp";
-import { badge, coverImage, endCard } from "@/lib/text-image";
+import type { Job } from "@/models/job";
+import type { Item } from "@/models/item";
+import type { Asset } from "@/models/asset";
+import { renderAd } from "@/lib/video/ad";
+import { STYLES, type StyleId } from "@/lib/config";
 
 const BUDGET_MS = 210_000;
-const W = 1080, H = 1920;
 
 const Copy = z.object({
   items: z.array(z.object({
@@ -26,122 +28,141 @@ const Copy = z.object({
   })),
 });
 
-
 /** 模型偶爾夾雜其他文字系統的字（例如西里爾字母），只留中日韓、拉丁、數字、標點與表情符號 */
-const clean = (t: string) => t.replace(/[\u0400-\u04FF\u0500-\u052F\u0600-\u06FF\u0E00-\u0E7F]+/g, "").replace(/[ \t]{2,}/g, " ").trim();
+const clean = (t: string) => t.replace(/[Ѐ-ӿԀ-ԯ؀-ۿ฀-๿]+/g, "").replace(/[ \t]{2,}/g, " ").trim();
 
-/** stage 8：文案 → 每件一支 9:16 短影片（封面 → 跟著商品的原片片段 → 結尾字卡）→ 目錄 CSV 網址 */
+/** stage 8：文案 → 每件一支商品形象廣告短片 → 目錄 CSV 網址 */
 const render: StageFn = async ({ job, jobId, log }) => {
   const t0 = Date.now();
   const list = (await itemRepo.forJob(jobId)).filter((i) => i.status === "confirmed");
   if (!list.length) throw new Error("沒有已確認的商品");
-  const [trs, ass] = await Promise.all([trackRepo.forJob(jobId), assetRepo.forJob(jobId)]);
+  const ass = await assetRepo.forJob(jobId);
   const assetByItem = new Map(ass.map((a) => [String(a.itemId), a]));
   let usd = 0;
 
-  // 文案：一次寫完所有還沒有文案的商品
   const needCopy = list.filter((i) => !assetByItem.get(String(i._id))?.caption);
   if (needCopy.length) {
-    const { data, usd: u } = await sparkJSON({
-      schema: Copy, name: "copy", effort: "low", maxTokens: 6000,
-      system: `你是台灣的社群小編，替小賣家寫商品貼文與短影片口白。語氣親切、具體、不浮誇，只用繁體中文、阿拉伯數字與常見標點，不夾雜其他語言。幣別 ${job.currency}。店名「${job.shopName || "本店"}」。只能寫畫面與資料裡看得到的事實：不得捏造認證、檢驗、產地、功效、規格數字，也不得自行加優惠、折扣、贈品、免運、限時。沒有價格就寫「價格請私訊」。`,
-      parts: [{ text: `請替以下每件商品各寫一份：\n${needCopy.map((i) => `- ${i.code}｜${i.title}｜${i.color} ${i.material}｜${i.price != null ? `${job.currency} ${i.price}` : "價格私訊"}｜${i.description}`).join("\n")}` }],
-    });
-    usd += u;
-    for (const c of data.items) {
-      const it = needCopy.find((i) => i.code === c.code);
-      if (it) await assetRepo.upsert(it._id!, jobId, { caption: clean(c.caption), hook: clean(c.hook), sellingPoints: c.sellingPoints.slice(0, 3).map(clean), voiceover: clean(c.voiceover) });
-    }
+    usd += await writeCopy(job, jobId, needCopy);
   }
   const assets2 = new Map((await assetRepo.forJob(jobId)).map((a) => [String(a.itemId), a]));
-
   const todo = list.filter((i) => !assets2.get(String(i._id))?.reelUrl);
-  if (!todo.length) {
-    await finish(jobId, usd);
-    return { note: `${list.length} 支短影片` };
-  }
+  if (!todo.length) { await finish(jobId, usd); return { note: `${list.length} 支短影片` }; }
 
-  const runId = Date.now().toString(36);
-  const dir = await tmpDir();
-  try {
-    const src = path.join(dir, "src.mp4");
-    await download(job.video.originalUrl, src);
-    const vw = job.video.width ?? 1920, vh = job.video.height ?? 1080;
-    const pw = job.video.procWidth ?? vw, ph = job.video.procHeight ?? vh;
-    const sx = vw / pw;
-    void ph;
-    let made = 0;
-
-    for (const it of todo) {
-      if (Date.now() - t0 > BUDGET_MS) {
-        await jobs.addCost(jobId, usd);
-        return { note: `短影片 ${list.length - todo.length + made}/${list.length}，繼續…`, again: true };
-      }
-      const a = assets2.get(String(it._id));
-      const hook = a?.hook || it.title;
-      const priceText = it.price != null ? `${job.currency} ${it.price.toLocaleString()}` : "私訊詢價";
-      const itemDir = path.join(dir, it.code);
-      await fs.mkdir(itemDir, { recursive: true });
-
-      // 封面與結尾字卡用 canvas 畫（含中文字），片段用 overlay 貼代碼標籤，不依賴 drawtext
-      const heroUrl = it.heroUrl ?? a?.studioUrl ?? a?.cutoutUrl ?? it.primaryCutoutUrl ?? it.primaryCropUrls[0];
-      const hero = Buffer.from(await (await fetch(heroUrl)).arrayBuffer());
-      const heroPng = await sharp(hero).resize(W - 160, W - 160, { fit: "contain", background: "#ffffff" }).png().toBuffer();
-      const coverPng = path.join(itemDir, "cover.png");
-      await fs.writeFile(coverPng, await coverImage({ width: W, height: H, heroPng, hook, price: priceText }));
-      const endPng = path.join(itemDir, "end.png");
-      await fs.writeFile(endPng, endCard(W, H, `留言 ${it.code} 取得連結`));
-      const badgePng = path.join(itemDir, "badge.png");
-      await fs.writeFile(badgePng, badge(it.code));
-      const coverUrl = await putFile(`jobs/${job.code}/items/${runId}/${it.code}/cover.png`, coverPng);
-
-      // 片段：這件商品的 track 裡挑最多 2 段、各 4 秒，裁成 9:16 跟著框
-      const segs = pickSegments(trs.filter((t) => it.trackIds.some((id) => String(id) === String(t._id))), job.video.durationSec ?? 0);
-      const inputs: string[] = ["-loop", "1", "-t", "2.2", "-i", coverPng];
-      segs.forEach((s) => inputs.push("-ss", s.start.toFixed(2), "-t", s.dur.toFixed(2), "-i", src));
-      inputs.push("-loop", "1", "-t", "2.2", "-i", endPng, "-i", badgePng);
-      const bIdx = segs.length + 2;
-      const filters: string[] = [`[0:v]scale=${W}:${H},setsar=1,format=yuv420p[c]`];
-      const parts = ["[c]"];
-      segs.forEach((s, k) => {
-        const cw = Math.min(vw, Math.round((vh * 9) / 16));
-        const cx = Math.round(Math.max(0, Math.min(vw - cw, s.cx * sx - cw / 2)));
-        filters.push(`[${k + 1}:v]crop=${cw}:${vh}:${cx}:0,scale=${W}:${H},setsar=1[s${k}];[s${k}][${bIdx}:v]overlay=60:120,format=yuv420p[v${k}]`);
-        parts.push(`[v${k}]`);
-      });
-      filters.push(`[${segs.length + 1}:v]scale=${W}:${H},setsar=1,format=yuv420p[e]`);
-      parts.push("[e]");
-      filters.push(`${parts.join("")}concat=n=${parts.length}:v=1:a=0[out]`);
-      const reel = path.join(itemDir, "reel.mp4");
-      await run([...inputs, "-filter_complex", filters.join(";"), "-map", "[out]", "-r", "30", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-y", reel], { timeoutMs: 120_000 });
-      const reelUrl = await putFile(`jobs/${job.code}/items/${runId}/${it.code}/reel.mp4`, reel);
-      const dur = 2.2 * 2 + segs.reduce((s, x) => s + x.dur, 0);
-      await assetRepo.upsert(it._id!, jobId, { coverUrl, reelUrl, reelDurationSec: Number(dur.toFixed(1)), status: "done" });
-      made++;
-      log(`${it.code} reel ${dur.toFixed(1)}s`);
+  const trs = await trackRepo.forJob(jobId);
+  let made = 0;
+  for (const it of todo) {
+    if (Date.now() - t0 > BUDGET_MS) {
+      await jobs.addCost(jobId, usd);
+      return { note: `短影片 ${list.length - todo.length + made}/${list.length}，繼續…`, again: true };
     }
-  } finally {
-    await fs.rm(dir, { recursive: true, force: true });
+    const a = assets2.get(String(it._id));
+    if (!a) continue;
+    const spans = it.trackIds.map((id) => trs.find((t) => String(t._id) === String(id))).filter(Boolean).map((t) => [t!.startSec, t!.endSec] as const);
+    const r = await renderItem(job, it, a, spans, log);
+    made++;
+    log(`${it.code} 短片 ${r.ok ? "完成" : `失敗：${r.error}`}`);
   }
   await finish(jobId, usd);
   return { note: `${list.length} 支短影片` };
 };
 export default render;
 
-async function finish(jobId: import("mongodb").ObjectId, usd: number) {
-  await jobs.addCost(jobId, usd);
-  await jobs.patch(jobId, { catalogCsvUrl: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/api/jobs/${String(jobId)}/catalog.csv` });
+async function writeCopy(job: Job, jobId: ObjectId, needCopy: Item[]) {
+  const { data, usd } = await sparkJSON({
+    schema: Copy, name: "copy", effort: "low", maxTokens: 6000,
+    system: `你是台灣的社群小編，替小賣家寫商品貼文與短影片口白。語氣親切、具體、不浮誇，只用繁體中文、阿拉伯數字與常見標點，不夾雜其他語言。幣別 ${job.currency}。店名「${job.shopName || "本店"}」。只能寫畫面與資料裡看得到的事實：不得捏造認證、檢驗、產地、功效、規格數字，也不得自行加優惠、折扣、贈品、免運、限時。沒有價格就寫「價格請私訊」。`,
+    parts: [{ text: `請替以下每件商品各寫一份：\n${needCopy.map((i) => `- ${i.code}｜${i.title}｜${i.color} ${i.material}｜${i.price != null ? `${job.currency} ${i.price}` : "價格私訊"}｜${i.description}`).join("\n")}` }],
+  });
+  for (const c of data.items) {
+    const it = needCopy.find((i) => i.code === c.code);
+    if (it) await assetRepo.upsert(it._id!, jobId, { caption: clean(c.caption), hook: clean(c.hook), sellingPoints: c.sellingPoints.slice(0, 3).map(clean), voiceover: clean(c.voiceover) });
+  }
+  return usd;
 }
 
-/** 從 track 挑片段：每條 track 以最佳影格為中心取 4 秒，最多 2 段，依時間排序 */
-function pickSegments(ts: Track[], durationSec: number) {
-  const out: { start: number; dur: number; cx: number }[] = [];
-  for (const t of [...ts].sort((a, b) => (b.meanArea ?? 0) - (a.meanArea ?? 0)).slice(0, 2)) {
-    const center = t.bestT ?? (t.startSec + t.endSec) / 2;
-    const len = Math.min(4, Math.max(1.5, t.endSec - t.startSec));
-    const start = Math.max(0, Math.min(durationSec - len, center - len / 2));
-    const box = t.boxes.reduce((b, x) => (Math.abs(x.t - center) < Math.abs(b.t - center) ? x : b), t.boxes[0]);
-    out.push({ start, dur: len, cx: (box.x1 + box.x2) / 2 });
+/** 單件短片：stage 與「重做這件短片」共用 */
+export async function renderItem(job: Job, it: Item, a: Asset, spans: readonly (readonly [number, number])[], log: (m: string) => void) {
+  const dir = await tmpDir("ad-");
+  try {
+    const style = (job.style as StyleId) in STYLES ? (job.style as StyleId) : "lifestyle";
+    const shots = a.shots ?? [];
+    const pick = (k: string) => shots.find((s) => s.kind === k)?.url;
+    const dl = async (url: string | undefined, name: string) => (url ? download(url, path.join(dir, name)).catch(() => undefined) : undefined);
+    const cutoutPath = await dl(a.cutoutUrl ?? it.primaryCutoutUrl, "cutout.png");
+    const heroPath = await dl(it.heroUrl ?? pick("threeQuarter") ?? a.studioUrl ?? pick("front"), "hero.img");
+    const lifestylePath = await dl(pick("lifestyle") ?? a.lifestyleUrl, "life.img");
+    const shotPaths = (await Promise.all(["front", "threeQuarter", "side"].map((k, i) => dl(pick(k), `shot${i}.img`)))).filter(Boolean) as string[];
+
+    // 口白：賣家講這件商品的原聲片段（口述時段與商品入鏡時段重疊、優先有價格的那句）
+    let voicePath: string | undefined, voiceDur: number | undefined, subtitle: string | undefined;
+    if (job.video.audioUrl && job.transcript.length && spans.length) {
+      const turns = job.transcript.filter((tu) => spans.some(([s, e]) => tu.startSec < e + 1.5 && s - 1.5 < tu.endSec));
+      const turn = turns.find((t) => t.prices.length) ?? turns[0];
+      if (turn) {
+        // 一個 turn 可能講了好幾件：切成句子，挑講這件的那一句，時間依字元比例估算（只有 turn 級時間戳）
+        const seg = pickSentence(turn.text, it, job.currency);
+        const turnDur = Math.max(0.5, turn.endSec - turn.startSec);
+        const start = Math.max(0, turn.startSec + turnDur * seg.from - 0.15);
+        const dur = Math.min(8, Math.max(1, turnDur * (seg.to - seg.from) + 0.35));
+        const src = await dl(job.video.audioUrl, "audio.wav");
+        const out = path.join(dir, "voice.wav");
+        if (src) {
+          await run(["-y", "-ss", start.toFixed(2), "-t", dur.toFixed(2), "-i", src, "-af", "afade=t=in:d=0.08,afade=t=out:st=" + Math.max(0, dur - 0.2).toFixed(2) + ":d=0.2", out]).catch(() => undefined);
+          if (await fs.stat(out).then(() => true, () => false)) { voicePath = out; voiceDur = dur; subtitle = seg.text; }
+        }
+      }
+    }
+    const r = await renderAd({
+      code: it.code, title: it.title || it.category, price: it.price, currency: job.currency, storeName: job.shopName || "PanShop", style,
+      hook: a.hook || it.title, sellingPoints: a.sellingPoints?.length ? a.sellingPoints : [it.color, it.material, it.category].filter(Boolean), subtitle,
+      cutoutPath, heroPath, lifestylePath, shotPaths, voicePath, voiceStartSec: voicePath ? 1.6 : undefined, voiceDurSec: voiceDur, workDir: dir,
+    });
+    const stamp = Date.now().toString(36);
+    const [reelUrl, coverUrl] = await Promise.all([
+      putFile(`jobs/${job.code}/items/${stamp}/${it.code}/ad.mp4`, r.mp4),
+      putFile(`jobs/${job.code}/items/${stamp}/${it.code}/cover.png`, r.cover),
+    ]);
+    await assetRepo.upsert(it._id!, job._id!, { reelUrl, coverUrl, reelDurationSec: r.durationSec, status: "done" });
+    return { ok: true as const, reelUrl, coverUrl };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    log(`${it.code} 短片失敗 ${msg.slice(0, 200)}`);
+    await assetRepo.upsert(it._id!, job._id!, { status: "failed", error: msg.slice(0, 500) });
+    return { ok: false as const, error: msg };
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
   }
-  return out.sort((a, b) => a.start - b.start);
+}
+
+/** 從一段口述裡挑出講這件商品的句子，回傳句子文字與它在整段中的字元比例區間 */
+function pickSentence(text: string, it: Item, currency: string): { text: string; from: number; to: number } {
+  const parts: { text: string; from: number; to: number }[] = [];
+  let pos = 0;
+  for (const m of text.split(/(?<=[。！？!?；;])/)) { if (m.trim()) parts.push({ text: m.trim(), from: pos / text.length, to: (pos + m.length) / text.length }); pos += m.length; }
+  if (parts.length <= 1) return { text, from: 0, to: 1 };
+  const keys = [it.title, it.color, it.material, it.category].filter(Boolean).flatMap((k) => k.split(/[\s，、]/)).filter((k) => k.length >= 2);
+  const price = it.price != null ? String(it.price) : null;
+  const score = (p: string) => keys.reduce((n, k) => n + (p.includes(k) ? 2 : 0), 0) + (price && p.includes(price) ? 3 : 0) + (price && hasChinesePrice(p, it.price!) ? 3 : 0);
+  void currency;
+  const best = [...parts].sort((a, b) => score(b.text) - score(a.text))[0];
+  return score(best.text) > 0 ? best : { text, from: 0, to: 1 };
+}
+
+/** 口述裡的中文數字價格（例如 兩百九十、一千九百八十）是否等於這個價格 */
+function hasChinesePrice(text: string, price: number): boolean {
+  const map: Record<string, number> = { 零: 0, 一: 1, 二: 2, 兩: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+  const unit: Record<string, number> = { 十: 10, 百: 100, 千: 1000, 萬: 10000 };
+  const m = text.match(/[零一二兩三四五六七八九十百千萬]+(?=元|塊)/g);
+  if (!m) return false;
+  for (const s of m) {
+    let total = 0, cur = 0;
+    for (const ch of s) { if (map[ch] != null) cur = map[ch]; else if (unit[ch]) { total += (cur || 1) * unit[ch]; cur = 0; } }
+    if (total + cur === price) return true;
+  }
+  return false;
+}
+
+async function finish(jobId: ObjectId, usd: number) {
+  await jobs.addCost(jobId, usd);
+  await jobs.patch(jobId, { catalogCsvUrl: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/api/jobs/${String(jobId)}/catalog.csv` });
 }

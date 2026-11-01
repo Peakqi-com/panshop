@@ -26,7 +26,7 @@ const ITEMS = [
 ];
 const QUICK = process.argv.includes("--quick");
 const PICK = QUICK ? ITEMS.filter((i) => ["A1", "B1", "C2"].includes(i.code)) : ITEMS;
-const TILE = 1080, W = 1920, H = 1080, FPS = 30, SPEED = QUICK ? 220 : 150; // px/s
+const TILE = 1080, W = 1920, H = 1080, FPS = 30, SPEED = 150; // px/s
 const NAME = QUICK ? "quick" : "synthetic";
 
 await fs.mkdir(OUT, { recursive: true });

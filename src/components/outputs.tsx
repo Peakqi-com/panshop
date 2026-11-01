@@ -115,6 +115,13 @@ function ItemCard({ item: it, asset: a, producing, jobStyle, currency, onChange,
     await fetch(`/api/items/${it._id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ heroUrl: url }) });
     say("已設為主圖"); onChange();
   }
+  async function regenerateVideo() {
+    setBusy(true); say("短片製作中，約 30 秒…");
+    const r = await fetch(`/api/items/${it._id}/regenerate-video`, { method: "POST" });
+    const j = await r.json().catch(() => ({}));
+    say(r.ok && j.ok ? "短片已重做" : `短片失敗：${j.error ?? "未知錯誤"}`);
+    setBusy(false); onChange();
+  }
   async function regenerate(which: "studio" | "lifestyle" | "both") {
     setBusy(true);
     const r = await fetch(`/api/items/${it._id}/regenerate`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ which, hint, style }) });
@@ -146,6 +153,7 @@ function ItemCard({ item: it, asset: a, producing, jobStyle, currency, onChange,
               {a?.caption && <button onClick={async () => say((await copyText(a.caption)) ? "文案已複製" : "複製失敗")} className="btn btn-ghost px-2 py-1">複製文案</button>}
               <button onClick={() => setEditing(true)} className="btn btn-ghost px-2 py-1">編輯</button>
               <button disabled={busy} onClick={() => setRegen(regen ? null : "both")} className="btn btn-ghost px-2 py-1">換一張</button>
+              <button disabled={busy} onClick={regenerateVideo} className="btn btn-ghost px-2 py-1">重做短片</button>
             </div>
           </>
         ) : (
@@ -157,7 +165,7 @@ function ItemCard({ item: it, asset: a, producing, jobStyle, currency, onChange,
             <label className="block">貼文文案<textarea value={form.caption} onChange={(e) => setForm({ ...form, caption: e.target.value })} rows={4} className="input mt-0.5" /></label>
             <label className="block">口白<textarea value={form.voiceover} onChange={(e) => setForm({ ...form, voiceover: e.target.value })} rows={3} className="input mt-0.5" /></label>
             <div className="flex gap-2"><button disabled={busy} onClick={save} className="btn btn-primary px-3 py-1.5">儲存</button><button onClick={() => setEditing(false)} className="btn btn-ghost px-3 py-1.5">取消</button></div>
-            <p className="text-stone-400">改完後短影片要重做才會更新（下一版提供單件重做短片）。</p>
+            <p className="text-stone-400">改完後按「重做短片」才會更新影片。</p>
           </div>
         )}
 
