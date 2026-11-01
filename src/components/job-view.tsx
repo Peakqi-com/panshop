@@ -9,7 +9,7 @@ import { Outputs } from "./outputs";
 
 export type JobPayload = {
   job: {
-    _id: string; code: string; status: string; shopName: string; currency: string; createdAt: string;
+    _id: string; code: string; status: string; shopName: string; currency: string; createdAt: string; style: string;
     video: { originalUrl: string; fps4Url?: string; durationSec?: number; procWidth?: number; procHeight?: number; procFps?: number };
     frames: { t: number; url: string }[];
     categories: { name: string; phrase: string; estimatedCount: number }[];
@@ -23,12 +23,12 @@ export type JobPayload = {
   assets: AssetRow[];
 };
 export type ItemRow = {
-  _id: string; code: string; status: string; trackIds: string[]; category: string; primaryCropUrls: string[]; primaryCutoutUrl?: string;
+  _id: string; code: string; status: string; trackIds: string[]; category: string; primaryCropUrls: string[]; primaryCutoutUrl?: string; heroUrl?: string;
   title: string; color: string; material: string; price: number | null; currency: string; description: string;
   confidence: { title: number; price: number; overall: number }; sources: { vision: boolean; speech: boolean }; speechEvidence: string;
 };
 export type TrackRow = { _id: string; category: string; samObjectId: string; startSec: number; endSec: number; boxes: { t: number; x1: number; y1: number; x2: number; y2: number; w: number; h: number }[] };
-export type AssetRow = { itemId: string; cutoutUrl?: string; studioUrl?: string; lifestyleUrl?: string; coverUrl?: string; reelUrl?: string; caption: string; status: string };
+export type AssetRow = { itemId: string; cutoutUrl?: string; studioUrl?: string; lifestyleUrl?: string; coverUrl?: string; reelUrl?: string; caption: string; hook?: string; sellingPoints?: string[]; voiceover?: string; history?: { kind: string; url: string }[]; status: string };
 
 const STAGE_HINT: Record<Stage, string> = {
   extract: "讀取影片、抽出影格與音軌",
