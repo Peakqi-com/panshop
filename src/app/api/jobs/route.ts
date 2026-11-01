@@ -1,0 +1,42 @@
+import { customAlphabet } from "nanoid";
+import { after } from "next/server";
+import { z } from "zod";
+import { jobs } from "@/repositories/jobs";
+import { triggerStage } from "@/lib/pipeline";
+import { checkUploadPasscode } from "@/lib/auth";
+
+const code = customAlphabet("abcdefghjkmnpqrstuvwxyz23456789", 10);
+
+const Body = z.object({
+  videoUrl: z.string().url(),
+  fileName: z.string().optional(),
+  bytes: z.number().optional(),
+  shopName: z.string().max(60).default(""),
+  currency: z.string().max(5).default("TWD"),
+  passcode: z.string().optional(),
+});
+
+/** 建 job 並啟動管線 */
+export async function POST(req: Request) {
+  const parsed = Body.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return Response.json({ error: "參數不對" }, { status: 400 });
+  const b = parsed.data;
+  if (!checkUploadPasscode(b.passcode)) return Response.json({ error: "通行碼不對" }, { status: 403 });
+  const job = await jobs.create({
+    code: code(),
+    status: "uploaded",
+    shopName: b.shopName,
+    currency: b.currency,
+    language: "zh-TW",
+    video: { originalUrl: b.videoUrl, fileName: b.fileName, bytes: b.bytes, procFps: 4 },
+    frames: [], categories: [], transcript: [], stages: {} as never, metrics: {},
+  });
+  const id = String(job._id);
+  after(() => triggerStage(id, "extract"));
+  return Response.json({ id, code: job.code });
+}
+
+export async function GET() {
+  const list = await jobs.list(30);
+  return Response.json(list.map((j) => ({ id: String(j._id), code: j.code, status: j.status, createdAt: j.createdAt, itemCount: j.metrics.itemCount ?? null })));
+}

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm dev:*)", "Bash(pnpm build:*)", "Bash(pnpm lint:*)", "Bash(pnpm typecheck:*)", "Bash(pnpm test:*)",
+      "Bash(pnpm add:*)", "Bash(pnpm install:*)", "Bash(pnpm tsx:*)",
+      "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git add:*)", "Bash(git commit:*)",
+      "Bash(vercel env:*)", "Bash(vercel logs:*)", "Bash(gh run list:*)", "Bash(gh pr view:*)"
+    ],
+    "deny": ["Read(./.env.local)", "Read(./.env)"]
+  }
+}
