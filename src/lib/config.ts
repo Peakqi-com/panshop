@@ -48,3 +48,10 @@ export const SCENE_VARIATIONS = [
   "flat-lay top-down arrangement with tasteful complementary props",
   "golden-hour side light with long soft shadows",
 ];
+
+/** 商品圖角度：棚拍三個角度加一張情境 */
+export const ANGLES = [
+  { kind: "front", label: "正面", hint: "straight-on front view, the product facing the camera" },
+  { kind: "threeQuarter", label: "四十五度", hint: "three-quarter hero angle from slightly above, showing the front and one side" },
+  { kind: "side", label: "側面", hint: "clean side profile view" },
+] as const;

@@ -5,7 +5,8 @@ export const AssetSchema = z.object({
   _id: z.instanceof(ObjectId).optional(),
   itemId: z.instanceof(ObjectId),
   jobId: z.instanceof(ObjectId),
-  cutoutUrl: z.string().url().optional(),     // SAM 遮罩合成白底（必有）
+  cutoutUrl: z.string().url().optional(),     // SAM 遮罩去背（確認表與後台用，不進商品卡）
+  shots: z.array(z.object({ kind: z.string(), label: z.string(), url: z.string().url() })).default([]),  // 多角度商品圖：front、threeQuarter、side、lifestyle
   studioUrl: z.string().url().optional(),     // Muse Image 棚拍白底
   lifestyleUrl: z.string().url().optional(),  // Muse Image 情境圖
   coverUrl: z.string().url().optional(),      // Reels 封面

@@ -30,7 +30,7 @@ export default async function ShopPage({ params }: { params: Promise<{ code: str
       <div className="mt-6 grid grid-cols-2 gap-3">
         {visible.map((it) => {
           const a = byItem.get(String(it._id));
-          const img = a?.studioUrl ?? a?.cutoutUrl ?? it.primaryCutoutUrl ?? it.primaryCropUrls[0];
+          const img = it.heroUrl ?? a?.shots?.find((sh) => sh.kind === "threeQuarter")?.url ?? a?.studioUrl ?? a?.cutoutUrl ?? it.primaryCutoutUrl;
           return (
             <article key={String(it._id)} id={it.code} className="card overflow-hidden">
               <div className="aspect-square bg-white">{img && <img src={img} alt={it.title} className="h-full w-full object-contain" />}</div>

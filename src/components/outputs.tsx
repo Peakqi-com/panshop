@@ -93,14 +93,15 @@ function ItemCard({ item: it, asset: a, producing, jobStyle, currency, onChange,
   const [hint, setHint] = useState("");
   const [style, setStyle] = useState<string>(jobStyle);
   const [form, setForm] = useState({ title: it.title, price: it.price == null ? "" : String(it.price), caption: a?.caption ?? "", hook: a?.hook ?? "", voiceover: a?.voiceover ?? "", sellingPoints: (a?.sellingPoints ?? []).join("\n") });
+  // 商品卡只放生成的多角度圖與情境圖；原影片截圖不進卡片
+  const KIND_LABEL: Record<string, string> = { front: "正面", threeQuarter: "四十五度", side: "側面", lifestyle: "情境" };
+  const shots = a?.shots?.length ? a.shots : [a?.studioUrl && { kind: "threeQuarter", label: "棚拍", url: a.studioUrl }, a?.lifestyleUrl && { kind: "lifestyle", label: "情境", url: a.lifestyleUrl }].filter(Boolean) as { kind: string; label: string; url: string }[];
   const images: LightboxImage[] = [
-    a?.studioUrl && { url: a.studioUrl, label: "棚拍圖", kind: "studio" },
-    a?.lifestyleUrl && { url: a.lifestyleUrl, label: "情境圖", kind: "lifestyle" },
-    (a?.cutoutUrl ?? it.primaryCutoutUrl) && { url: (a?.cutoutUrl ?? it.primaryCutoutUrl)!, label: "去背圖", kind: "cutout" },
-    ...it.primaryCropUrls.map((u, i) => ({ url: u, label: `原始裁圖 ${i + 1}`, kind: "crop" })),
-    ...(a?.history ?? []).map((h, i) => ({ url: h.url, label: `舊版 ${i + 1}（${h.kind === "studio" ? "棚拍" : "情境"}）`, kind: "history" })),
-  ].filter(Boolean) as LightboxImage[];
-  const hero = it.heroUrl ?? a?.studioUrl ?? a?.cutoutUrl ?? it.primaryCutoutUrl ?? it.primaryCropUrls[0];
+    ...shots.map((sh) => ({ url: sh.url, label: KIND_LABEL[sh.kind] ?? sh.label, kind: sh.kind })),
+    ...(a?.history ?? []).map((h, i) => ({ url: h.url, label: `舊版 ${i + 1}（${KIND_LABEL[h.kind] ?? h.kind}）`, kind: "history" })),
+  ];
+  if (!images.length && (a?.cutoutUrl ?? it.primaryCutoutUrl)) images.push({ url: (a?.cutoutUrl ?? it.primaryCutoutUrl)!, label: "去背圖", kind: "cutout" });
+  const hero = it.heroUrl ?? shots.find((sh) => sh.kind === "threeQuarter")?.url ?? shots[0]?.url ?? a?.cutoutUrl ?? it.primaryCutoutUrl;
 
   async function save() {
     setBusy(true);
@@ -133,7 +134,7 @@ function ItemCard({ item: it, asset: a, producing, jobStyle, currency, onChange,
         <h3 className="mt-1 font-medium leading-snug">{it.title}</h3>
         <div className="mt-2 flex gap-1">
           {images.slice(0, 6).map((im, k) => <button key={im.url} onClick={() => setLb(k)} title={im.label} className={`h-11 w-11 overflow-hidden rounded-md ring-1 ${im.url === hero ? "ring-2 ring-orange-400" : "ring-stone-200"}`}><img src={im.url} alt="" className="h-full w-full object-cover" /></button>)}
-          {producing && images.length < 3 && <div className="skeleton h-11 w-11 rounded-md" />}
+          {producing && images.length < 4 && Array.from({ length: 4 - images.length }).map((_, k) => <div key={k} className="skeleton h-11 w-11 rounded-md" />)}
         </div>
 
         {!editing ? (
@@ -162,12 +163,12 @@ function ItemCard({ item: it, asset: a, producing, jobStyle, currency, onChange,
 
         {regen && (
           <div className="mt-3 space-y-2 rounded-lg bg-stone-50 p-3 text-xs">
-            <div className="font-medium">重做商品圖（約 20 秒、$0.02）</div>
+            <div className="font-medium">重做商品圖（三個角度加情境，約 20 秒、$0.04）</div>
             <select value={style} onChange={(e) => setStyle(e.target.value)} className="input">{(Object.keys(STYLES) as StyleId[]).map((k) => <option key={k} value={k}>{STYLES[k].label}</option>)}</select>
             <input value={hint} onChange={(e) => setHint(e.target.value)} placeholder="一句方向（選填），例如：放在木桌上，旁邊有一杯咖啡" className="input" />
             <div className="flex flex-wrap gap-2">
               <button disabled={busy} onClick={() => regenerate("both")} className="btn btn-primary px-3 py-1.5">{busy ? "生成中…" : "棚拍＋情境"}</button>
-              <button disabled={busy} onClick={() => regenerate("studio")} className="btn btn-ghost px-3 py-1.5">只重做棚拍</button>
+              <button disabled={busy} onClick={() => regenerate("studio")} className="btn btn-ghost px-3 py-1.5">只重做三個角度</button>
               <button disabled={busy} onClick={() => regenerate("lifestyle")} className="btn btn-ghost px-3 py-1.5">只重做情境</button>
               <button onClick={() => setRegen(null)} className="text-stone-500">取消</button>
             </div>

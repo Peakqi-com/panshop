@@ -15,8 +15,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const origin = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;
   const rows = list.filter((i) => i.status === "confirmed").map((i) => {
     const a = byItem.get(String(i._id));
-    const img = i.heroUrl ?? a?.studioUrl ?? a?.cutoutUrl ?? i.primaryCutoutUrl ?? i.primaryCropUrls[0] ?? "";
-    const extra = [a?.lifestyleUrl, a?.cutoutUrl !== img ? a?.cutoutUrl : undefined].filter(Boolean).join(",");
+    const img = i.heroUrl ?? a?.studioUrl ?? a?.cutoutUrl ?? i.primaryCutoutUrl ?? "";
+    const extra = (a?.shots ?? []).map((sh) => sh.url).filter((u) => u !== img).join(",");
     return [
       `${job.code}-${i.code}`, i.title, i.description || i.title, "in stock", "new",
       i.price != null ? `${i.price.toFixed(2)} ${i.currency}` : "", `${origin}/s/${job.code}#${i.code}`, img, extra,
