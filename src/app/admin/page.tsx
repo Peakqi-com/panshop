@@ -8,7 +8,7 @@ export default async function AdminPage() {
   const admin = await isAdmin();
   if (!admin) {
     return (
-      <main className="mx-auto max-w-md p-8">
+      <main className="mx-auto max-w-md px-4 py-16">
         <h1 className="text-2xl font-semibold">PanShop 後台</h1>
         <p className="mt-2 text-sm text-neutral-500">輸入 ADMIN_PASSCODE。</p>
         <LoginForm />
@@ -17,7 +17,7 @@ export default async function AdminPage() {
   }
   const { list: rows, dbError } = await listSettings();
   return (
-    <main className="mx-auto max-w-2xl p-8">
+    <main className="mx-auto max-w-2xl px-4 py-10">
       <h1 className="text-2xl font-semibold">PanShop 後台：模型金鑰</h1>
       <p className="mt-2 text-sm text-neutral-500">
         值以 AES-256-GCM 加密存進資料庫，只顯示末四碼。送出新值會覆蓋。沒有在這裡設定時，會退回環境變數。

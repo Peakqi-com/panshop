@@ -15,7 +15,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!job?._id) return Response.json({ error: "not found" }, { status: 404 });
   const url = new URL(req.url);
   const full = url.searchParams.get("full") === "1";
-  const [its, trs, ass] = await Promise.all([items.forJob(job._id), full ? tracks.forJob(job._id) : [], full ? assets.forJob(job._id) : []]);
+  const [its, trs, ass] = await Promise.all([items.forJob(job._id, { includeDeleted: full }), full ? tracks.forJob(job._id) : [], full ? assets.forJob(job._id) : []]);
   return Response.json(serialize({
     job,
     items: its,

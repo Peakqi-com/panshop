@@ -3,7 +3,7 @@ import { checkWorkerSecret } from "@/lib/auth";
 import { runStage, triggerStage } from "@/lib/pipeline";
 import { STAGES, type Stage } from "@/models/job";
 
-export const maxDuration = 300;
+export const maxDuration = 800; // Pro 方案上限；segment 與 render 最耗時
 
 /** 跑一個 stage；完成後在背景觸發下一個。只接受帶 WORKER_SECRET 的請求 */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {

@@ -134,12 +134,12 @@ export function JobView({ code }: { code: string }) {
 
       {inReview && (
         <>
-          <BurstGrid key={burstKey} items={data.items} animate={burstKey > 0} />
-          <Timeline job={job} tracks={data.tracks} items={data.items} />
+          <BurstGrid key={burstKey} items={data.items.filter((i) => i.status !== "deleted")} animate={burstKey > 0} />
+          <Timeline job={job} tracks={data.tracks} items={data.items.filter((i) => i.status !== "deleted")} />
           <ReviewTable data={data} onChange={load} />
         </>
       )}
-      {["producing", "done"].includes(job.status) && <Outputs data={data} onChange={load} />}
+      {["producing", "done"].includes(job.status) && <Outputs data={{ ...data, items: data.items.filter((i) => i.status !== "deleted") }} onChange={load} />}
     </main>
   );
 }

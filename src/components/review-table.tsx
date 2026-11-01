@@ -4,7 +4,10 @@ import { useState } from "react";
 import type { JobPayload, ItemRow } from "./job-view";
 
 export function ReviewTable({ data, onChange }: { data: JobPayload; onChange: () => void }) {
-  const { job, items } = data;
+  const { job } = data;
+  const items = data.items.filter((i) => i.status !== "deleted");
+  const deleted = data.items.filter((i) => i.status === "deleted" && !i.title.includes("（併入"));
+  const categories = Array.from(new Set(data.items.map((i) => i.category)));
   const [busy, setBusy] = useState(false);
   const editable = job.status === "review";
   const low = items.filter((i) => i.confidence.overall < 0.6).length;
@@ -31,10 +34,20 @@ export function ReviewTable({ data, onChange }: { data: JobPayload; onChange: ()
             <tr><th className="p-3">商品</th><th className="p-3">品名與描述</th><th className="p-3">顏色／材質</th><th className="p-3 text-right">價格（{job.currency}）</th><th className="p-3">依據</th><th className="p-3"></th></tr>
           </thead>
           <tbody>
-            {items.map((it) => <Row key={it._id} item={it} editable={editable} onChange={onChange} />)}
+            {items.map((it) => <Row key={it._id} item={it} editable={editable} categories={categories} onChange={onChange} />)}
           </tbody>
         </table>
       </div>
+      {editable && deleted.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-stone-500">
+          <span>已標記不賣：</span>
+          {deleted.map((d) => (
+            <button key={d._id} onClick={async () => { await fetch(`/api/items/${d._id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ status: "draft" }) }); onChange(); }} className="rounded-full bg-white px-2.5 py-1 ring-1 ring-stone-200 hover:ring-stone-400">
+              {d.code} {d.title} ↺
+            </button>
+          ))}
+        </div>
+      )}
       {editable && (
         <div className="sticky bottom-4 mt-4 flex items-center justify-between gap-3 rounded-xl bg-stone-900 p-3 text-white shadow-lg">
           <div className="text-sm"><span className="font-medium">{items.length} 件</span><span className="text-stone-400"> 將建立目錄、可購買頁與短影片</span></div>
@@ -45,7 +58,7 @@ export function ReviewTable({ data, onChange }: { data: JobPayload; onChange: ()
   );
 }
 
-function Row({ item, editable, onChange }: { item: ItemRow; editable: boolean; onChange: () => void }) {
+function Row({ item, editable, categories, onChange }: { item: ItemRow; editable: boolean; categories: string[]; onChange: () => void }) {
   const [title, setTitle] = useState(item.title);
   const [price, setPrice] = useState(item.price == null ? "" : String(item.price));
   const [desc, setDesc] = useState(item.description);
@@ -71,7 +84,14 @@ function Row({ item, editable, onChange }: { item: ItemRow; editable: boolean; o
           <img src={item.primaryCutoutUrl ?? item.primaryCropUrls[0]} alt="" className="h-16 w-16 rounded-lg bg-white object-contain ring-1 ring-stone-200" />
           <div className="flex flex-col gap-1">{item.primaryCropUrls.slice(0, 2).map((u) => <img key={u} src={u} alt="" className="h-7 w-7 rounded object-cover ring-1 ring-stone-200" />)}</div>
         </div>
-        <div className="mt-1 font-mono text-xs text-stone-500">{item.code} · {item.category}</div>
+        <div className="mt-1 flex items-center gap-1 font-mono text-xs text-stone-500">
+          {item.code}
+          {editable ? (
+            <select value={item.category} onChange={(e) => save({ category: e.target.value })} className="rounded border border-transparent bg-transparent font-sans text-xs text-stone-500 hover:border-stone-300">
+              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          ) : <span className="font-sans">· {item.category}</span>}
+        </div>
       </td>
       <td className="p-3">
         {editable ? (
