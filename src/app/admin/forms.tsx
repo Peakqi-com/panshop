@@ -49,6 +49,8 @@ export function AppSettingsForm({ value }: { value: AppSettings }) {
         </label>
         <label className="text-sm"><span className="font-medium">影片長度上限（秒）</span><input name="maxVideoSec" type="number" min={30} max={600} defaultValue={value.maxVideoSec} className="input mt-1" /></label>
         <label className="text-sm"><span className="font-medium">上傳大小上限（MB）</span><input name="maxUploadMb" type="number" min={20} max={500} defaultValue={value.maxUploadMb} className="input mt-1" /></label>
+        <label className="text-sm"><span className="font-medium">直播回放長度上限（秒）</span><input name="maxReplaySec" type="number" min={60} max={1800} defaultValue={value.maxReplaySec} className="input mt-1" /></label>
+        <label className="text-sm"><span className="font-medium">照片匯入張數上限</span><input name="maxPhotos" type="number" min={1} max={60} defaultValue={value.maxPhotos} className="input mt-1" /></label>
         <label className="text-sm sm:col-span-2"><span className="font-medium">範例影片網址</span><input name="sampleVideoUrl" defaultValue={value.sampleVideoUrl} placeholder="空白＝用環境變數 SAMPLE_VIDEO_URL" className="input mt-1 font-mono text-xs" /></label>
         <label className="text-sm sm:col-span-2"><span className="font-medium">首頁公告</span><input name="announcement" defaultValue={value.announcement} placeholder="空白不顯示" className="input mt-1" /></label>
         <label className="text-sm"><span className="font-medium">留言對商品用的模型</span>

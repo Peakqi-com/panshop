@@ -13,9 +13,10 @@ export async function POST(req: Request) {
         const payload = clientPayload ? (JSON.parse(clientPayload) as { passcode?: string }) : {};
         if (!checkUploadPasscode(payload.passcode)) throw new Error("上傳通行碼不對");
         const { maxUploadMb } = await settings.get();
+        const isImage = /\.(jpe?g|png|webp|heic)$/i.test(_pathname);
         return {
-          allowedContentTypes: ["video/mp4", "video/quicktime", "video/x-m4v"],
-          maximumSizeInBytes: maxUploadMb * 1024 * 1024,
+          allowedContentTypes: isImage ? ["image/jpeg", "image/png", "image/webp", "image/heic"] : ["video/mp4", "video/quicktime", "video/x-m4v"],
+          maximumSizeInBytes: (isImage ? 20 : maxUploadMb) * 1024 * 1024,
           addRandomSuffix: true,
           tokenPayload: JSON.stringify({}),
         };

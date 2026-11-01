@@ -8,7 +8,7 @@ export default async function AdminJobs({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const list = await jobs.listFiltered({ status: sp.status, q: sp.q?.trim() || undefined, limit: 200 });
   const rows: JobRow[] = list.map((j) => ({
-    id: String(j._id), code: j.code, shopName: j.shopName, status: j.status, createdAt: fmtTime(j.createdAt),
+    id: String(j._id), code: j.code, shopName: j.shopName, status: j.status, source: j.source, createdAt: fmtTime(j.createdAt),
     durationSec: j.video.durationSec ?? null, itemCount: j.metrics.itemCount ?? null, costUsd: j.metrics.costUsd ?? null, style: j.style,
   }));
   return (

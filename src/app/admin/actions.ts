@@ -42,6 +42,8 @@ export async function saveAppSettingsAction(_: unknown, formData: FormData) {
     await settings.save({
       maxVideoSec: Number(formData.get("maxVideoSec")),
       maxUploadMb: Number(formData.get("maxUploadMb")),
+      maxReplaySec: Number(formData.get("maxReplaySec")),
+      maxPhotos: Number(formData.get("maxPhotos")),
       defaultStyle: String(formData.get("defaultStyle") ?? "lifestyle"),
       sampleVideoUrl: String(formData.get("sampleVideoUrl") ?? "").trim(),
       siteName: String(formData.get("siteName") ?? "PanShop").trim() || "PanShop",

@@ -18,12 +18,12 @@ export default async function Home() {
             對著商品慢慢掃一圈，<br />你的店就開好了。
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-stone-600">
-            拍一段一到三分鐘的影片，邊拍邊說品名和價格。PanShop 會切出每一件商品、寫好品名與描述、做出商品圖，
-            匯出 Meta 商品目錄、可購買頁，還有每件一支直式短影片。
+            掃一段影片、丟一疊照片，或上傳直播回放。PanShop 會切出每一件商品、寫好品名與描述、做出多角度商品圖，
+            匯出 Meta 商品目錄、可購買頁，還有每件一支形象短片。
           </p>
           <ol className="mt-8 grid gap-3 text-sm sm:grid-cols-3">
             {[
-              ["1", "掃", "手機繞著桌上的商品慢慢移動，每件停留三秒。"],
+              ["1", "掃或匯入", "影片、照片、直播回放三種入口，怎麼方便怎麼來。"],
               ["2", "確認", "一張表：改價格、刪不賣的，就好。"],
               ["3", "開賣", "目錄 CSV、可購買頁、短影片一次拿到。"],
             ].map(([n, t, d]) => (
@@ -34,7 +34,7 @@ export default async function Home() {
             ))}
           </ol>
         </div>
-        <UploadForm needPasscode={!!process.env.UPLOAD_PASSCODE} sampleAvailable={!!(cfg.sampleVideoUrl || process.env.SAMPLE_VIDEO_URL)} maxVideoSec={cfg.maxVideoSec} maxUploadMb={cfg.maxUploadMb} />
+        <UploadForm needPasscode={!!process.env.UPLOAD_PASSCODE} sampleAvailable={!!(cfg.sampleVideoUrl || process.env.SAMPLE_VIDEO_URL)} maxVideoSec={cfg.maxVideoSec} maxReplaySec={cfg.maxReplaySec} maxUploadMb={cfg.maxUploadMb} maxPhotos={cfg.maxPhotos} />
       </section>
 
       {recent.length > 0 && (

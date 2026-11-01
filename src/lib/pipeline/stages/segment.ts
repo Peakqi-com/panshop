@@ -4,7 +4,7 @@ import sharp from "sharp";
 import type { SegmentationMaskRecord } from "@meta-sam/parser";
 import { samParser, type SamParser } from "@/lib/sam-parser";
 import type { StageFn } from "@/lib/pipeline";
-import { samVideo, uploadFile } from "@/lib/meta";
+import { samVideo, samImage, uploadFile } from "@/lib/meta";
 import { download, frameAt, tmpDir } from "@/lib/ffmpeg";
 import { putBlob } from "@/lib/blob";
 import { jobs } from "@/repositories/jobs";
@@ -24,7 +24,65 @@ function score(b: Box) {
 }
 
 /** stage 3：每個品類一次 SAM 影片請求 → track；每條 track 挑最佳影格做裁圖與去背 */
-const segment: StageFn = async ({ job, jobId, log }) => {
+const segment: StageFn = async (ctx) => (ctx.job.source === "photos" ? segmentPhotos(ctx) : segmentVideo(ctx));
+
+/** 照片來源：每張照片對每個品類跑一次 SAM 圖片模式；每個物件一條 track，t 用照片索引 */
+const segmentPhotos: StageFn = async ({ job, jobId, log }) => {
+  if (!job.categories.length) throw new Error("沒有品類");
+  if (!job.frames.length) throw new Error("沒有照片");
+  const { recordsOfKind, decodeMaskToRaster } = await samParser();
+  const dir = await tmpDir();
+  try {
+    const drafts: Draft[] = [];
+    let usd = 0;
+    const uploads: Promise<void>[] = [];
+    const runId = Date.now().toString(36);
+    for (const [pi, fr] of job.frames.entries()) {
+      const file = path.join(dir, `p_${pi}.jpg`);
+      await download(fr.url, file);
+      const meta = await sharp(file).metadata();
+      const W = meta.width!, H = meta.height!;
+      for (const cat of job.categories) {
+        const { result, usd: u } = await samImage({ imageUrl: fr.url, phrase: cat.phrase });
+        usd += u;
+        const boxes = recordsOfKind(result.records, "box");
+        const masks = recordsOfKind(result.records, "mask");
+        for (const b of boxes) {
+          const box: Box = { t: pi, frame: pi, x1: b.left, y1: b.top, x2: b.right, y2: b.bottom, w: W, h: H, conf: b.confidence };
+          const a = area(box);
+          if (a < PIPE.minTrackArea || (b.confidence ?? 0.7) < PIPE.minTrackConf) continue;
+          const tr: Draft = { jobId, category: cat.name, samCategory: cat.name, samObjectId: `p${pi}-${b.objectId}`, startSec: pi, endSec: pi + 1, boxes: [box], crops: [], cutouts: [], meanConf: b.confidence ?? 0.7, meanArea: a, bestT: pi };
+          const ti = drafts.push(tr) - 1;
+          const key = `jobs/${job.code}/tracks/${runId}/${ti}`;
+          const m = Math.max(box.x2 - box.x1, box.y2 - box.y1) * PIPE.cropMargin;
+          const left = Math.max(0, Math.floor(box.x1 - m)), top = Math.max(0, Math.floor(box.y1 - m));
+          const width = Math.min(W - left, Math.ceil(box.x2 - box.x1 + 2 * m)), height = Math.min(H - top, Math.ceil(box.y2 - box.y1 + 2 * m));
+          if (width < 8 || height < 8) continue;
+          const cropBuf = await sharp(file).extract({ left, top, width, height }).jpeg({ quality: 90 }).toBuffer();
+          uploads.push(putBlob(`${key}/crop_0.jpg`, cropBuf).then((url) => { tr.crops.push({ t: pi, url }); }));
+          const mrec = masks.find((mm) => mm.objectId === b.objectId);
+          if (mrec) {
+            try {
+              const cut = await cutout(file, mrec, 1, 1, W, H, decodeMaskToRaster);
+              uploads.push(putBlob(`${key}/cutout_0.png`, cut).then((url) => { tr.cutouts.push({ t: pi, url }); }));
+            } catch (e) { log(`cutout 失敗 photo ${pi}: ${(e as Error).message}`); }
+          }
+        }
+        log(`photo ${pi} ${cat.phrase}: ${boxes.length} boxes`);
+      }
+    }
+    await Promise.all(uploads);
+    pruneTracks(drafts, log);
+    const saved = await trackRepo.replaceForJob(jobId, drafts);
+    await jobs.addCost(jobId, usd);
+    await jobs.patch(jobId, { "metrics.trackCount": saved.length, "metrics.samFrames": job.frames.length * job.categories.length });
+    return { note: `${saved.length} 件（${job.frames.length} 張照片）` };
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+};
+
+const segmentVideo: StageFn = async ({ job, jobId, log }) => {
   const v = job.video;
   if (!v.fps4Url || !v.procWidth || !v.procHeight) throw new Error("缺少處理版影片");
   if (!job.categories.length) throw new Error("沒有品類");

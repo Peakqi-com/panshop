@@ -81,10 +81,10 @@ const dedup: StageFn = async ({ job, jobId, log }) => {
         schema: Out,
         name: "dedup_groups",
         effort: "medium",
-        system: "你是商品盤點員。賣家拿手機掃過桌上的商品，同一件商品會從畫面邊緣進入、離開、之後鏡頭掃回來又再出現，所以會被切成多段，其中有些段只拍到一部分（例如只有杯子的一側或把手）。你要判斷哪些影像是同一件實體商品（同款同色同尺寸），而不是只看品類相同。",
+        system: job.source === "photos" ? "你是商品盤點員。賣家匯入多張商品照片，同一件商品可能在不同照片裡以不同角度出現。你要判斷哪些影像是同一件實體商品（同款同色同尺寸），而不是只看品類相同。" : "你是商品盤點員。賣家拿手機掃過桌上的商品，同一件商品會從畫面邊緣進入、離開、之後鏡頭掃回來又再出現，所以會被切成多段，其中有些段只拍到一部分（例如只有杯子的一側或把手）。你要判斷哪些影像是同一件實體商品（同款同色同尺寸），而不是只看品類相同。",
         parts: [
-          { text: `品類「${cat.name}」共有 ${ts.length} 段影像，每段給 1 到 ${PIPE.cropsPerTrack} 張裁圖，並標示時間與是否貼在畫面邊緣。請把屬於同一件實體商品的影像編號分在同一組，不同件就各自一組；每個編號只出現一次，全部 ${ts.length} 個編號都要出現。規則：\n1. ${conflict.length ? `以下編號曾同時出現在畫面上，絕不能同組：${conflict.join("、")}。` : "沒有兩段同時出現在畫面上。"}\n2. 顏色、花紋、形狀、標籤細節明確不同就是不同件。\n3. 只拍到一部分、貼在畫面邊緣的短片段，若顏色材質與另一段完整的商品一致，應視為同一件（鏡頭正在進入或離開它）。\n4. 其餘拿不準時偏向「不同件」。` },
-          ...ts.flatMap((t, i) => [{ text: `影像 ${i + 1}（${t.startSec.toFixed(1)}s 到 ${t.endSec.toFixed(1)}s${edgeNote(t)}）` }, ...t.crops.slice(0, PIPE.cropsPerTrack).map((c) => ({ imageUrl: c.url }))]),
+          { text: `品類「${cat.name}」共有 ${ts.length} ${job.source === "photos" ? "張照片裡切出的商品" : "段影像"}，每${job.source === "photos" ? "個" : "段"}給 1 到 ${PIPE.cropsPerTrack} 張裁圖${job.source === "photos" ? "" : "，並標示時間與是否貼在畫面邊緣"}。請把屬於同一件實體商品的影像編號分在同一組，不同件就各自一組；每個編號只出現一次，全部 ${ts.length} 個編號都要出現。規則：\n1. ${conflict.length ? `以下編號曾同時出現在畫面上，絕不能同組：${conflict.join("、")}。` : "沒有兩段同時出現在畫面上。"}\n2. 顏色、花紋、形狀、標籤細節明確不同就是不同件。\n3. 只拍到一部分、貼在畫面邊緣的短片段，若顏色材質與另一段完整的商品一致，應視為同一件（鏡頭正在進入或離開它）。\n4. 其餘拿不準時偏向「不同件」。` },
+          ...ts.flatMap((t, i) => [{ text: job.source === "photos" ? `影像 ${i + 1}（第 ${t.startSec + 1} 張照片）` : `影像 ${i + 1}（${t.startSec.toFixed(1)}s 到 ${t.endSec.toFixed(1)}s${edgeNote(t)}）` }, ...t.crops.slice(0, PIPE.cropsPerTrack).map((c) => ({ imageUrl: c.url }))]),
         ],
       });
       usd += u;

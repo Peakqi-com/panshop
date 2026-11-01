@@ -3,6 +3,8 @@ import { z } from "zod";
 /** 可在後台調整的系統設定（非金鑰）。金鑰走 secrets 集合 */
 export const AppSettingsSchema = z.object({
   maxVideoSec: z.number().int().min(30).max(600).default(240),
+  maxReplaySec: z.number().int().min(60).max(1800).default(600),
+  maxPhotos: z.number().int().min(1).max(60).default(30),
   maxUploadMb: z.number().int().min(20).max(500).default(300),
   defaultStyle: z.string().default("lifestyle"),
   sampleVideoUrl: z.string().default(""),            // 空白＝用環境變數 SAMPLE_VIDEO_URL

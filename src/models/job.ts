@@ -36,8 +36,10 @@ export const JobSchema = z.object({
   currency: z.string().default("TWD"),
   language: z.string().default("zh-TW"),
   style: z.string().default("lifestyle"),   // 商品圖風格，見 src/lib/config.ts STYLES
+  source: z.enum(["video", "photos", "replay"]).default("video"),
+  photos: z.array(z.object({ url: z.string().url(), name: z.string().optional() })).default([]),
   video: z.object({
-    originalUrl: z.string().url(),
+    originalUrl: z.string().url().optional(),   // 照片來源沒有影片
     fileName: z.string().optional(),
     bytes: z.number().optional(),
     fps4Url: z.string().url().optional(),

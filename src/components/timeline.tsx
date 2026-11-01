@@ -5,6 +5,36 @@ import type { JobPayload, TrackRow, ItemRow } from "./job-view";
 
 /** 驚艷 2：播放頭走到哪，哪些商品在鏡頭內就亮起；同一件多段仍是一件 */
 export function Timeline({ job, tracks, items }: { job: JobPayload["job"]; tracks: TrackRow[]; items: ItemRow[] }) {
+  if (job.source === "photos") return <PhotoStrip job={job} tracks={tracks} items={items} />;
+  return <VideoTimeline job={job} tracks={tracks} items={items} />;
+}
+
+/** 照片來源：每張照片下面列出切出的商品 */
+function PhotoStrip({ job, tracks, items }: { job: JobPayload["job"]; tracks: TrackRow[]; items: ItemRow[] }) {
+  const byTrack = new Map<string, ItemRow>();
+  for (const it of items) for (const id of it.trackIds) byTrack.set(id, it);
+  return (
+    <section className="mt-10">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-lg font-semibold">照片與切出的商品</h2>
+        <p className="text-sm text-stone-500">同一件在多張照片裡出現只算一件。</p>
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {job.frames.map((f, i) => {
+          const here = tracks.filter((t) => Math.round(t.startSec) === i).map((t) => byTrack.get(t._id)).filter(Boolean) as ItemRow[];
+          return (
+            <div key={f.url} className="card overflow-hidden">
+              <img src={f.url} alt="" className="aspect-[4/3] w-full object-cover" />
+              <div className="flex flex-wrap gap-1 p-2 text-xs">{here.length ? here.map((it) => <span key={it._id} className="rounded-full bg-orange-100 px-2 py-0.5 font-mono text-orange-800">{it.code}</span>) : <span className="text-stone-400">沒有切到商品</span>}</div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function VideoTimeline({ job, tracks, items }: { job: JobPayload["job"]; tracks: TrackRow[]; items: ItemRow[] }) {
   const video = useRef<HTMLVideoElement>(null);
   const [t, setT] = useState(0);
   const dur = job.video.durationSec ?? 1;
@@ -36,7 +66,7 @@ export function Timeline({ job, tracks, items }: { job: JobPayload["job"]; track
       </div>
       <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_360px]">
         <div className="relative overflow-hidden rounded-xl bg-black">
-          <video ref={video} src={job.video.fps4Url ?? job.video.originalUrl} controls playsInline preload="metadata" className="w-full" />
+          <video ref={video} src={job.video.fps4Url ?? job.video.originalUrl ?? undefined} controls playsInline preload="metadata" className="w-full" />
           <div className="pointer-events-none absolute inset-0">
             {live.map((tr) => {
               const b = nearestBox(tr, t);

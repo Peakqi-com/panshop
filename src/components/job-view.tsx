@@ -9,8 +9,8 @@ import { Outputs } from "./outputs";
 
 export type JobPayload = {
   job: {
-    _id: string; code: string; status: string; shopName: string; currency: string; createdAt: string; style: string;
-    video: { originalUrl: string; fps4Url?: string; durationSec?: number; procWidth?: number; procHeight?: number; procFps?: number };
+    _id: string; code: string; status: string; shopName: string; currency: string; createdAt: string; style: string; source: "video" | "photos" | "replay";
+    video: { originalUrl?: string; fps4Url?: string; durationSec?: number; procWidth?: number; procHeight?: number; procFps?: number };
     frames: { t: number; url: string }[];
     categories: { name: string; phrase: string; estimatedCount: number }[];
     transcript: { startSec: number; endSec: number; text: string; names: string[]; prices: number[] }[];
@@ -31,7 +31,7 @@ export type TrackRow = { _id: string; category: string; samObjectId: string; sta
 export type AssetRow = { itemId: string; cutoutUrl?: string; studioUrl?: string; lifestyleUrl?: string; coverUrl?: string; reelUrl?: string; shots?: { kind: string; label: string; url: string }[]; caption: string; captionShort?: string; captionLong?: string; hook?: string; sellingPoints?: string[]; voiceover?: string; history?: { kind: string; url: string }[]; status: string };
 
 const STAGE_HINT: Record<Stage, string> = {
-  extract: "讀取影片、抽出影格與音軌",
+  extract: "讀取影片或照片、抽出影格與音軌",
   discover: "Muse Spark 看總覽影格，列出商品品類",
   segment: "SAM 3.1 逐品類切出每一件並跨格追蹤",
   dedup: "同一件出鏡再入鏡只算一次",
@@ -94,7 +94,7 @@ export function JobView({ code }: { code: string }) {
     <main className="mx-auto max-w-6xl px-4 py-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs text-stone-500">掃描 <span className="font-mono">{job.code}</span> · {fmtTime(job.createdAt)}</p>
+          <p className="text-xs text-stone-500">{job.source === "photos" ? "照片匯入" : job.source === "replay" ? "直播回放" : "影片掃描"} <span className="font-mono">{job.code}</span> · {fmtTime(job.createdAt)}</p>
           <h1 className="text-2xl font-bold">{job.shopName || "我的商品"}</h1>
         </div>
         <div className="flex items-center gap-2 text-sm">
