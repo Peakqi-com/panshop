@@ -5,6 +5,7 @@ import { jobs } from "@/repositories/jobs";
 import { triggerStage } from "@/lib/pipeline";
 import { checkUploadPasscode } from "@/lib/auth";
 import { STYLES, DEFAULT_STYLE } from "@/lib/config";
+import { settings } from "@/repositories/settings";
 
 const code = customAlphabet("abcdefghjkmnpqrstuvwxyz23456789", 10);
 
@@ -25,7 +26,8 @@ export async function POST(req: Request) {
   if (!parsed.success) return Response.json({ error: "參數不對" }, { status: 400 });
   const b = parsed.data;
   if (!checkUploadPasscode(b.passcode)) return Response.json({ error: "通行碼不對" }, { status: 403 });
-  const videoUrl = b.sample ? process.env.SAMPLE_VIDEO_URL : b.videoUrl;
+  const cfg = await settings.get();
+  const videoUrl = b.sample ? (cfg.sampleVideoUrl || process.env.SAMPLE_VIDEO_URL) : b.videoUrl;
   if (!videoUrl) return Response.json({ error: b.sample ? "沒有設定範例影片" : "缺少影片" }, { status: 400 });
   const job = await jobs.create({
     code: code(),
@@ -33,7 +35,7 @@ export async function POST(req: Request) {
     shopName: b.shopName || (b.sample ? "範例：桌上八件" : ""),
     currency: b.currency,
     language: "zh-TW",
-    style: b.style && b.style in STYLES ? b.style : DEFAULT_STYLE,
+    style: b.style && b.style in STYLES ? b.style : (cfg.defaultStyle in STYLES ? cfg.defaultStyle : DEFAULT_STYLE),
     video: { originalUrl: videoUrl, fileName: b.sample ? "sample.mp4" : b.fileName, bytes: b.bytes, procFps: 4 },
     frames: [], categories: [], transcript: [], stages: {} as never, metrics: {},
   });

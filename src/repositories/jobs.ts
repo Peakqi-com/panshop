@@ -20,6 +20,45 @@ export const jobs = {
   async list(limit = 50) {
     return (await col()).find({}).sort({ _id: -1 }).limit(limit).toArray();
   },
+  async listFiltered(opts: { status?: string; q?: string; limit?: number } = {}) {
+    const f: Record<string, unknown> = {};
+    if (opts.status) f.status = opts.status;
+    if (opts.q) f.$or = [{ code: opts.q }, { shopName: { $regex: opts.q, $options: "i" } }];
+    return (await col()).find(f).sort({ _id: -1 }).limit(opts.limit ?? 100).toArray();
+  },
+  async remove(id: string | ObjectId) {
+    const db = await getDb();
+    const _id = new ObjectId(id);
+    await Promise.all([
+      db.collection("tracks").deleteMany({ jobId: _id }),
+      db.collection("items").deleteMany({ jobId: _id }),
+      db.collection("assets").deleteMany({ jobId: _id }),
+      db.collection("comments").deleteMany({ jobId: _id }),
+    ]);
+    await (await col()).deleteOne({ _id });
+  },
+  /** 後台儀表板用的彙總 */
+  async stats() {
+    const c = await col();
+    const since = new Date(Date.now() - 14 * 86400_000);
+    const [byStatus, totals, byDay, failures] = await Promise.all([
+      c.aggregate<{ _id: string; n: number }>([{ $group: { _id: "$status", n: { $sum: 1 } } }]).toArray(),
+      c.aggregate<{ _id: null; jobs: number; items: number; cost: number; seconds: number }>([
+        { $group: { _id: null, jobs: { $sum: 1 }, items: { $sum: { $ifNull: ["$metrics.itemCount", 0] } }, cost: { $sum: { $ifNull: ["$metrics.costUsd", 0] } }, seconds: { $sum: { $ifNull: ["$video.durationSec", 0] } } } },
+      ]).toArray(),
+      c.aggregate<{ _id: string; jobs: number; cost: number }>([
+        { $match: { createdAt: { $gte: since } } },
+        { $group: { _id: { $dateToString: { format: "%m-%d", date: "$createdAt", timezone: "Asia/Taipei" } }, jobs: { $sum: 1 }, cost: { $sum: { $ifNull: ["$metrics.costUsd", 0] } } } },
+        { $sort: { _id: 1 } },
+      ]).toArray(),
+      c.find({ status: "failed" }).sort({ _id: -1 }).limit(8).toArray(),
+    ]);
+    return {
+      byStatus: Object.fromEntries(byStatus.map((s) => [s._id, s.n])) as Record<string, number>,
+      totals: totals[0] ?? { jobs: 0, items: 0, cost: 0, seconds: 0 },
+      byDay, failures,
+    };
+  },
   async patch(id: string | ObjectId, set: Record<string, unknown>) {
     await (await col()).updateOne({ _id: new ObjectId(id) }, { $set: { ...set, updatedAt: new Date() } });
   },

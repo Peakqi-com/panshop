@@ -1,7 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
-import { loginAction, saveSettingAction } from "./actions";
+import { useActionState, useState, useTransition } from "react";
+import { loginAction, saveSettingAction, saveAppSettingsAction, retryStageAction, deleteJobAction, runHealthAction, type HealthRow } from "./actions";
+import { STAGES, STAGE_LABEL, type Stage } from "@/lib/stages";
+import { STYLES, type StyleId } from "@/lib/config";
+import type { AppSettings } from "@/models/setting";
 
 export function LoginForm() {
   const [state, action, pending] = useActionState(loginAction, null as null | { ok: boolean; error?: string });
@@ -22,15 +25,90 @@ export function SettingForm(props: { settingKey: string; label: string; env: str
       <input type="hidden" name="key" value={props.settingKey} />
       <div className="flex items-baseline justify-between">
         <label className="font-medium">{props.label}</label>
-        <span className="text-xs text-neutral-500">{status}{props.updatedAt ? `・${new Date(props.updatedAt).toLocaleString("zh-TW")}` : ""}</span>
+        <span className="text-xs text-stone-500">{status}{props.updatedAt ? `・${new Date(props.updatedAt).toLocaleString("zh-TW", { hour12: false })}` : ""}</span>
       </div>
       <div className="mt-2 flex gap-2">
         <input name="value" type="password" autoComplete="off" className="input flex-1 font-mono text-sm" placeholder="貼上新值" />
         <button disabled={pending} className="btn btn-primary">儲存</button>
       </div>
-      {state && state.key === props.settingKey && (
-        <p className={`mt-2 text-sm ${state.ok ? "text-green-700" : "text-red-600"}`}>{state.ok ? "已儲存" : state.error}</p>
-      )}
+      {state && state.key === props.settingKey && <p className={`mt-2 text-sm ${state.ok ? "text-green-700" : "text-red-600"}`}>{state.ok ? "已儲存" : state.error}</p>}
     </form>
+  );
+}
+
+export function AppSettingsForm({ value }: { value: AppSettings }) {
+  const [state, action, pending] = useActionState(saveAppSettingsAction, null as null | { ok: boolean; error?: string });
+  return (
+    <form action={action} className="card space-y-4 p-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="text-sm"><span className="font-medium">網站名稱</span><input name="siteName" defaultValue={value.siteName} className="input mt-1" /></label>
+        <label className="text-sm"><span className="font-medium">預設商品圖風格</span>
+          <select name="defaultStyle" defaultValue={value.defaultStyle} className="input mt-1">{(Object.keys(STYLES) as StyleId[]).map((k) => <option key={k} value={k}>{STYLES[k].label}</option>)}</select>
+        </label>
+        <label className="text-sm"><span className="font-medium">影片長度上限（秒）</span><input name="maxVideoSec" type="number" min={30} max={600} defaultValue={value.maxVideoSec} className="input mt-1" /></label>
+        <label className="text-sm"><span className="font-medium">上傳大小上限（MB）</span><input name="maxUploadMb" type="number" min={20} max={500} defaultValue={value.maxUploadMb} className="input mt-1" /></label>
+        <label className="text-sm sm:col-span-2"><span className="font-medium">範例影片網址</span><input name="sampleVideoUrl" defaultValue={value.sampleVideoUrl} placeholder="空白＝用環境變數 SAMPLE_VIDEO_URL" className="input mt-1 font-mono text-xs" /></label>
+        <label className="text-sm sm:col-span-2"><span className="font-medium">首頁公告</span><input name="announcement" defaultValue={value.announcement} placeholder="空白不顯示" className="input mt-1" /></label>
+        <label className="text-sm"><span className="font-medium">留言對商品用的模型</span>
+          <select name="commentModel" defaultValue={value.commentModel} className="input mt-1"><option value="spark-open">Muse Spark Open（Baseten，開放權重）</option><option value="spark">Muse Spark 1.3（Meta Model API）</option></select>
+        </label>
+      </div>
+      <div className="flex items-center gap-3">
+        <button disabled={pending} className="btn btn-primary">儲存設定</button>
+        {state && <span className={`text-sm ${state.ok ? "text-green-700" : "text-red-600"}`}>{state.ok ? "已儲存" : state.error}</span>}
+      </div>
+    </form>
+  );
+}
+
+export function RetryButtons({ jobId }: { jobId: string }) {
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs">
+      <span className="text-stone-500">從某個 stage 重跑：</span>
+      {STAGES.map((s) => (
+        <button key={s} disabled={pending} onClick={() => start(async () => { await retryStageAction(jobId, s as Stage); setMsg(`已從「${STAGE_LABEL[s]}」重跑`); })} className="btn btn-ghost px-2 py-1">{STAGE_LABEL[s]}</button>
+      ))}
+      {msg && <span className="text-green-700">{msg}</span>}
+    </div>
+  );
+}
+
+export function DeleteJobForm({ jobId, code }: { jobId: string; code: string }) {
+  const [typed, setTyped] = useState("");
+  return (
+    <form action={deleteJobAction} className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+      <input type="hidden" name="id" value={jobId} />
+      <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={`輸入代碼 ${code} 確認`} className="input w-56 font-mono" />
+      <button disabled={typed !== code} className="btn bg-red-600 text-white disabled:opacity-40">刪除工作</button>
+    </form>
+  );
+}
+
+export function HealthPanel() {
+  const [rows, setRows] = useState<HealthRow[] | null>(null);
+  const [pending, start] = useTransition();
+  return (
+    <div className="card p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-stone-600">會各打一次最便宜的呼叫（Spark 約 $0.0003），確認金鑰與服務都通。</p>
+        <button disabled={pending} onClick={() => start(async () => setRows(await runHealthAction()))} className="btn btn-primary">{pending ? "檢查中…" : "開始檢查"}</button>
+      </div>
+      {rows && (
+        <table className="mt-4 w-full text-sm">
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.name} className="border-t border-stone-100">
+                <td className="py-2 font-medium">{r.name}</td>
+                <td className={`py-2 ${r.ok ? "text-green-700" : "text-red-700"}`}>{r.ok ? "正常" : "失敗"}</td>
+                <td className="py-2 text-right font-mono text-xs text-stone-500">{r.ms} ms</td>
+                <td className="py-2 pl-4 text-xs text-stone-600">{r.detail}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }

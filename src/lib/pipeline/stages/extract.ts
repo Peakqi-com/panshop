@@ -5,6 +5,7 @@ import { download, extractWav, frameAt, probe, tmpDir, transcodeLowFps } from "@
 import { putFile } from "@/lib/blob";
 import { jobs } from "@/repositories/jobs";
 import { PIPE } from "@/lib/config";
+import { settings } from "@/repositories/settings";
 
 /** stage 1：原始影片 → 4 fps 720p（給 SAM）、總覽影格（給 Spark 與 UI）、24 kHz WAV（給 Voice） */
 const extract: StageFn = async ({ job, jobId, log }) => {
@@ -14,7 +15,8 @@ const extract: StageFn = async ({ job, jobId, log }) => {
     await download(job.video.originalUrl, src);
     const p = await probe(src);
     if (!p.durationSec) throw new Error("讀不到影片長度，格式可能不支援");
-    if (p.durationSec > 240) throw new Error(`影片 ${Math.round(p.durationSec)} 秒，上限 240 秒`);
+    const { maxVideoSec } = await settings.get();
+    if (p.durationSec > maxVideoSec) throw new Error(`影片 ${Math.round(p.durationSec)} 秒，上限 ${maxVideoSec} 秒`);
     log(`probe ${p.width}x${p.height} ${p.durationSec}s ${p.fps}fps rot${p.rotation}`);
 
     const low = path.join(dir, "proc.mp4");

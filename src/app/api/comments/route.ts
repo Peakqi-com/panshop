@@ -5,6 +5,7 @@ import { items as itemRepo } from "@/repositories/items";
 import { comments } from "@/repositories/comments";
 import { sparkOpenChat, extractJSON } from "@/lib/baseten";
 import { sparkJSON } from "@/lib/meta";
+import { settings } from "@/repositories/settings";
 
 const Body = z.object({ jobId: z.string(), text: z.string().min(1).max(300) });
 const Out = z.object({ intent: z.enum(["price", "stock", "spec", "buy", "other"]), itemCode: z.string().nullable(), reply: z.string() });
@@ -21,7 +22,8 @@ export async function POST(req: Request) {
   const user = `商品清單：\n${menu}\n\n顧客留言：「${p.data.text}」`;
   const t0 = Date.now();
   let out: z.infer<typeof Out> | null = null, model = "";
-  try {
+  const cfg = await settings.get();
+  if (cfg.commentModel === "spark-open") try {
     const r = await sparkOpenChat({ system, user, maxTokens: 1500 });
     const j = extractJSON(r.text);
     const v = Out.safeParse(j);

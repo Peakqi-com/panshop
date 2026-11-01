@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { UploadForm } from "@/components/upload-form";
 import { jobs } from "@/repositories/jobs";
+import { settings } from "@/repositories/settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const recent = await jobs.list(6).catch(() => []);
+  const [recent, cfg] = await Promise.all([jobs.list(6).catch(() => []), settings.get()]);
   return (
     <main className="mx-auto max-w-6xl px-4 pb-16 pt-12">
+      {cfg.announcement && <p className="mb-6 rounded-lg border border-orange-200 bg-orange-50 px-4 py-2 text-sm text-orange-900">{cfg.announcement}</p>}
       <section className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-start">
         <div className="rise">
           <p className="text-sm font-medium text-orange-600">PanShop · 掃一圈，就開賣</p>
@@ -31,7 +33,7 @@ export default async function Home() {
             ))}
           </ol>
         </div>
-        <UploadForm needPasscode={!!process.env.UPLOAD_PASSCODE} sampleAvailable={!!process.env.SAMPLE_VIDEO_URL} />
+        <UploadForm needPasscode={!!process.env.UPLOAD_PASSCODE} sampleAvailable={!!(cfg.sampleVideoUrl || process.env.SAMPLE_VIDEO_URL)} />
       </section>
 
       {recent.length > 0 && (

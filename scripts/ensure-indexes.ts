@@ -8,6 +8,7 @@ async function main() {
   await db.collection("items").createIndexes([{ key: { jobId: 1, status: 1, code: 1 } }]);
   await db.collection("assets").createIndexes([{ key: { itemId: 1 }, unique: true }, { key: { jobId: 1 } }]);
   await db.collection("comments").createIndexes([{ key: { jobId: 1, _id: -1 } }]);
+  await db.collection("jobs").createIndexes([{ key: { status: 1, _id: -1 } }]);
   await db.collection("secrets").createIndexes([{ key: { tenantId: 1, name: 1 }, unique: true }]);
   console.log("indexes ok");
   process.exit(0);

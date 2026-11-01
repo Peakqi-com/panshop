@@ -1,5 +1,6 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { checkUploadPasscode } from "@/lib/auth";
+import { settings } from "@/repositories/settings";
 
 /** Blob 用戶端直傳：瀏覽器先來這裡換 token，再直接把影片送去 Blob，不經過函式的 4.5 MB 限制 */
 export async function POST(req: Request) {
@@ -11,9 +12,10 @@ export async function POST(req: Request) {
       onBeforeGenerateToken: async (_pathname, clientPayload) => {
         const payload = clientPayload ? (JSON.parse(clientPayload) as { passcode?: string }) : {};
         if (!checkUploadPasscode(payload.passcode)) throw new Error("上傳通行碼不對");
+        const { maxUploadMb } = await settings.get();
         return {
           allowedContentTypes: ["video/mp4", "video/quicktime", "video/x-m4v"],
-          maximumSizeInBytes: 300 * 1024 * 1024,
+          maximumSizeInBytes: maxUploadMb * 1024 * 1024,
           addRandomSuffix: true,
           tokenPayload: JSON.stringify({}),
         };
