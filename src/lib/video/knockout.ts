@@ -4,7 +4,7 @@
  */
 import sharp from "sharp";
 
-const SOFT = 8, HARD = 70, MAX_CHROMA = 28;
+const SOFT = 8, HARD = 70, MAX_CHROMA = 28, HOLE = 4, EDGE_FADE = 0.07;
 
 export async function knockOutBackground(src: string, out: string): Promise<boolean> {
   const { data, info } = await sharp(src).resize(1200, 1200, { fit: "inside" }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -30,6 +30,21 @@ export async function knockOutBackground(src: string, out: string): Promise<bool
     if (x > 0) seed(p - 1); if (x < w - 1) seed(p + 1); if (y > 0) seed(p - w); if (y < h - 1) seed(p + w);
   }
 
+  // 被商品圍住的底色區（例如杯子把手的洞）：幾乎等於底色才挖掉，商品本身的白色不動
+  const minHole = n * 0.0008;
+  const checked = new Uint8Array(n);
+  for (let start = 0; start < n; start++) {
+    if (seen[start] || checked[start] || distOf(start) > HOLE) continue;
+    const region: number[] = [start]; checked[start] = 1;
+    for (let k = 0; k < region.length; k++) {
+      const p = region[k]; const x = p % w, y = (p - x) / w;
+      for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1]) {
+        if (q >= 0 && !checked[q] && !seen[q] && distOf(q) <= HOLE) { checked[q] = 1; region.push(q); }
+      }
+    }
+    if (region.length >= minHole && region.length < n * 0.15) for (const p of region) seen[p] = 1;
+  }
+
   const rgba = Buffer.alloc(n * 4);
   let clear = 0;
   for (let p = 0; p < n; p++) {
@@ -44,6 +59,12 @@ export async function knockOutBackground(src: string, out: string): Promise<bool
       const x = p % w, y = (p - x) / w;
       const edge = (x > 0 && seen[p - 1]) || (x < w - 1 && seen[p + 1]) || (y > 0 && seen[p - w]) || (y < h - 1 && seen[p + w]);
       if (edge) a = Math.min(255, Math.round((distOf(p) / 110) * 255));
+    }
+    // 影子碰到圖邊時淡出，不留直線切口
+    if (a > 0) {
+      const x = p % w, y = (p - x) / w;
+      const edgeDist = Math.min(x / w, (w - 1 - x) / w, y / h, (h - 1 - y) / h);
+      if (edgeDist < EDGE_FADE && seen[p]) a = Math.round(a * (edgeDist / EDGE_FADE));
     }
     const k = a / 255;
     for (let c = 0; c < 3; c++) {

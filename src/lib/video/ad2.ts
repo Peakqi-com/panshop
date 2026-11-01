@@ -181,7 +181,7 @@ export async function renderAdV2(input: AdV2Input): Promise<{ mp4: string; cover
       const rg = ctx.createRadialGradient(gx, gy, 10, gx, gy, 800); rg.addColorStop(0, dark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.45)"); rg.addColorStop(1, "rgba(255,255,255,0)"); ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
       const subject = (img ?? heroShadow) as unknown as Image | null;
       if (subject) {
-        const box = W * (isClose ? 0.62 : isHead ? 0.8 : 0.92);
+        const box = W * (isClose ? 0.62 : isHead ? 0.8 : 0.82);
         const cy = isClose ? H * 0.32 : isHead ? H * 0.54 : H * 0.45;
         const sz = Math.min(box / subject.width, box / subject.height) * m.scale;
         ctx.save(); ctx.translate(W / 2 + m.dx, cy + m.dy + Math.sin(local * 1.4) * 6); ctx.rotate(m.rot);
