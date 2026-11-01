@@ -25,11 +25,38 @@ function edgeNote(t: Track) {
  * 規則一：時間重疊的兩條 track 同時出現在畫面上，一定是不同件。
  * 規則二：不重疊的 track 才可能是同一件出鏡再入鏡，交給 Spark 看裁圖判斷。
  */
+const Verify = z.object({
+  tracks: z.array(z.object({ index: z.number().int(), category: z.string().describe("清單中的品類名；都不是或不是商品就填 none") })),
+});
+
 const dedup: StageFn = async ({ job, jobId, log }) => {
   const all = await trackRepo.forJob(jobId);
   if (!all.length) throw new Error("沒有 track 可去重");
   const drafts: Omit<Item, "_id" | "createdAt" | "updatedAt">[] = [];
   let usd = 0;
+
+  // 先驗證品類：SAM 的名詞片語會把長得像的東西一起抓進來（例如把皮革日誌本當成杯子），
+  // 用 Spark 看每條 track 的主裁圖重新歸類，不是商品的直接剔除
+  const withCrop = all.filter((t) => t.crops.length);
+  if (withCrop.length) {
+    const names = job.categories.map((c) => c.name);
+    const { data, usd: u } = await sparkJSON({
+      schema: Verify, name: "verify_categories", effort: PIPE.sparkEffort,
+      system: "你是商品盤點員。依照裁圖判斷每段影像裡的主體屬於哪一個品類；只看主體，不看背景。",
+      parts: [
+        { text: `品類清單：${names.join("、")}。以下 ${withCrop.length} 段影像，每段回一個品類；主體不在清單內、或只是桌面、手、包裝、背景雜物，就回 none。` },
+        ...withCrop.flatMap((t, i) => [{ text: `影像 ${i}（原判定：${t.category}）` }, { imageUrl: t.crops[Math.floor(t.crops.length / 2)].url }]),
+      ],
+    });
+    usd += u;
+    for (const v of data.tracks) {
+      const t = withCrop[v.index];
+      if (!t) continue;
+      if (v.category === "none" || !names.includes(v.category)) { t.category = "__drop__"; log(`drop track ${t.samObjectId}: 非商品`); }
+      else if (v.category !== t.category) { log(`track ${t.samObjectId}: ${t.category} → ${v.category}`); t.category = v.category; }
+    }
+    await Promise.all(all.map((t) => trackRepo.patch(t._id!, { category: t.category })));
+  }
 
   for (const [ci, cat] of job.categories.entries()) {
     const ts = all.filter((t) => t.category === cat.name && t.crops.length);
@@ -82,7 +109,7 @@ const dedup: StageFn = async ({ job, jobId, log }) => {
       drafts.push({
         jobId, code: `${letter}${n + 1}`, status: "draft", trackIds: g.map((t) => t._id!), category: cat.name,
         primaryCropUrls: crops, primaryCutoutUrl: cutout, title: "", color: "", material: "", price: null, currency: job.currency,
-        description: "", attributes: {}, googleProductCategory: "", confidence: { title: 0, price: 0, overall: 0 },
+        description: "", attributes: {}, googleProductCategory: "", sceneHint: "", confidence: { title: 0, price: 0, overall: 0 },
         sources: { vision: true, speech: false }, speechEvidence: "", userEdited: {},
       });
     });

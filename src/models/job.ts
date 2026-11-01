@@ -35,6 +35,7 @@ export const JobSchema = z.object({
   shopName: z.string().default(""),
   currency: z.string().default("TWD"),
   language: z.string().default("zh-TW"),
+  style: z.string().default("lifestyle"),   // 商品圖風格，見 src/lib/config.ts STYLES
   video: z.object({
     originalUrl: z.string().url(),
     fileName: z.string().optional(),

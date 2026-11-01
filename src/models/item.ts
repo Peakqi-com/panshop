@@ -19,6 +19,7 @@ export const ItemSchema = z.object({
   description: z.string().default(""),
   attributes: z.record(z.string(), z.string()).default({}),
   googleProductCategory: z.string().default(""),
+  sceneHint: z.string().default(""),        // 給情境圖的英文場景提示（identify 產生）
   confidence: z.object({
     title: z.number().default(0),
     price: z.number().default(0),

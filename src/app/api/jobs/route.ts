@@ -4,6 +4,7 @@ import { z } from "zod";
 import { jobs } from "@/repositories/jobs";
 import { triggerStage } from "@/lib/pipeline";
 import { checkUploadPasscode } from "@/lib/auth";
+import { STYLES, DEFAULT_STYLE } from "@/lib/config";
 
 const code = customAlphabet("abcdefghjkmnpqrstuvwxyz23456789", 10);
 
@@ -14,6 +15,7 @@ const Body = z.object({
   bytes: z.number().optional(),
   shopName: z.string().max(60).default(""),
   currency: z.string().max(5).default("TWD"),
+  style: z.string().optional(),
   passcode: z.string().optional(),
 });
 
@@ -31,6 +33,7 @@ export async function POST(req: Request) {
     shopName: b.shopName || (b.sample ? "範例：桌上八件" : ""),
     currency: b.currency,
     language: "zh-TW",
+    style: b.style && b.style in STYLES ? b.style : DEFAULT_STYLE,
     video: { originalUrl: videoUrl, fileName: b.sample ? "sample.mp4" : b.fileName, bytes: b.bytes, procFps: 4 },
     frames: [], categories: [], transcript: [], stages: {} as never, metrics: {},
   });

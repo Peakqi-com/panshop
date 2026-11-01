@@ -3,12 +3,14 @@
 import { upload } from "@vercel/blob/client";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { STYLES, DEFAULT_STYLE, type StyleId } from "@/lib/config";
 
 export function UploadForm({ needPasscode, sampleAvailable }: { needPasscode: boolean; sampleAvailable: boolean }) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [shopName, setShopName] = useState("");
   const [passcode, setPasscode] = useState("");
+  const [style, setStyle] = useState<StyleId>(DEFAULT_STYLE);
   const [progress, setProgress] = useState<number | null>(null);
   const [phase, setPhase] = useState<"idle" | "upload" | "create" | "sample">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +22,7 @@ export function UploadForm({ needPasscode, sampleAvailable }: { needPasscode: bo
     const r = await fetch("/api/jobs", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(sample ? { sample: true, shopName, passcode } : { videoUrl, fileName, bytes, shopName, passcode }),
+      body: JSON.stringify(sample ? { sample: true, shopName, passcode, style } : { videoUrl, fileName, bytes, shopName, passcode, style }),
     });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error ?? "建立失敗");
@@ -78,6 +80,12 @@ export function UploadForm({ needPasscode, sampleAvailable }: { needPasscode: bo
         <label className="block text-sm">
           <span className="font-medium">店名（選填）</span>
           <input value={shopName} onChange={(e) => setShopName(e.target.value)} className="input mt-1" placeholder="例如 小花選物" />
+        </label>
+        <label className="block text-sm">
+          <span className="font-medium">商品圖風格</span>
+          <select value={style} onChange={(e) => setStyle(e.target.value as StyleId)} className="input mt-1">
+            {(Object.keys(STYLES) as StyleId[]).map((k) => <option key={k} value={k}>{STYLES[k].label}</option>)}
+          </select>
         </label>
         {needPasscode && (
           <label className="block text-sm">

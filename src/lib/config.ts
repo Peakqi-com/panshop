@@ -24,3 +24,25 @@ export const PRICE = {
   image: 0.01,
   voicePerHour: 0.18,
 };
+
+/** 商品圖風格：使用者在上傳時選，影響 Muse Image 的場景描述；文字一律後製疊加，不讓模型畫字 */
+export const STYLES = {
+  lifestyle: { label: "生活情境", hint: "natural lifestyle scene with the product in use or at rest, real environment, candid warm daylight" },
+  minimal: { label: "極簡乾淨", hint: "minimalist composition, generous negative space, soft neutral or pastel backdrop, the product as the single hero" },
+  natural: { label: "自然質感", hint: "earthy organic mood, wood and linen textures, plants, soft window light, wellness feel" },
+  luxury: { label: "精品質感", hint: "premium editorial look, deep rich tones, marble or velvet surfaces, dramatic soft spotlight" },
+  cute: { label: "可愛親和", hint: "friendly playful mood, soft pastel palette, rounded props, bright even light" },
+  promo: { label: "電商促銷", hint: "clean high-contrast commercial composition with clear space reserved for price and headline overlays" },
+} as const;
+export type StyleId = keyof typeof STYLES;
+export const DEFAULT_STYLE: StyleId = "lifestyle";
+
+/** 情境圖每件輪一種構圖，避免整批長得一樣 */
+export const SCENE_VARIATIONS = [
+  "wide shot with the surrounding environment visible and balanced composition",
+  "tight tabletop close-up with shallow depth of field and a softly blurred background",
+  "the product on a shelf or ledge with a few complementary props",
+  "in-use moment with a person's hands interacting with the product, no face visible",
+  "flat-lay top-down arrangement with tasteful complementary props",
+  "golden-hour side light with long soft shadows",
+];
