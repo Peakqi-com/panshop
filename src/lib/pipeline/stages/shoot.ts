@@ -5,6 +5,40 @@ import { jobs } from "@/repositories/jobs";
 import { items as itemRepo } from "@/repositories/items";
 import { assets as assetRepo } from "@/repositories/assets";
 import { STYLES, SCENE_VARIATIONS, DEFAULT_STYLE, type StyleId } from "@/lib/config";
+import type { Job } from "@/models/job";
+import type { Item } from "@/models/item";
+
+/** 單件商品圖：stage 與「重做這件」共用。hint 是使用者給的一句方向 */
+export async function shootItem(job: Job, it: Item, opts: { which: "studio" | "lifestyle" | "both"; variation?: number; hint?: string; style?: StyleId }) {
+  const styleId = opts.style ?? ((job.style as StyleId) in STYLES ? (job.style as StyleId) : DEFAULT_STYLE);
+  const style = STYLES[styleId];
+  const refs = [...it.primaryCropUrls.slice(0, 3), ...(it.primaryCutoutUrl ? [it.primaryCutoutUrl] : [])];
+  const subject = `${it.title || it.category}${it.color ? `, ${it.color}` : ""}${it.material ? `, ${it.material}` : ""}`;
+  const prev = await assetRepo.byItem(it._id!);
+  const set: Record<string, unknown> = { cutoutUrl: it.primaryCutoutUrl };
+  const history = [...(prev?.history ?? [])];
+  const errors: string[] = [];
+  const stamp = Date.now().toString(36);
+  let usd = 0;
+  if (opts.which !== "lifestyle") {
+    try {
+      const r = await imageEdit({ prompt: studioPrompt(subject, opts.hint), images: refs, size: "1024x1024", format: "png" });
+      usd += r.usd;
+      if (prev?.studioUrl) history.push({ kind: "studio", url: prev.studioUrl, at: new Date() });
+      set.studioUrl = await putBlob(`jobs/${job.code}/items/${stamp}/${it.code}/studio.png`, r.images[0]);
+    } catch (e) { errors.push(`棚拍圖：${(e as Error).message.slice(0, 100)}`); }
+  }
+  if (opts.which !== "studio") {
+    try {
+      const r = await imageEdit({ prompt: lifestylePrompt(subject, style.hint, it.sceneHint, SCENE_VARIATIONS[(opts.variation ?? 0) % SCENE_VARIATIONS.length], opts.hint), images: refs, size: "1024x1024", format: "jpeg" });
+      usd += r.usd;
+      if (prev?.lifestyleUrl) history.push({ kind: "lifestyle", url: prev.lifestyleUrl, at: new Date() });
+      set.lifestyleUrl = await putBlob(`jobs/${job.code}/items/${stamp}/${it.code}/lifestyle.jpg`, r.images[0]);
+    } catch (e) { errors.push(`情境圖：${(e as Error).message.slice(0, 100)}`); }
+  }
+  await assetRepo.upsert(it._id!, job._id!, { ...set, history: history.slice(-12), status: prev?.status ?? "pending" });
+  return { usd, errors, set };
+}
 
 const BUDGET_MS = 200_000;
 const CONCURRENCY = 3;
@@ -18,30 +52,11 @@ const shoot: StageFn = async ({ job, jobId, log }) => {
   if (!todo.length) return { note: `${list.length} 件商品圖` };
   let usd = 0, made = 0;
 
-  const runId = Date.now().toString(36);
-  const style = STYLES[(job.style as StyleId) in STYLES ? (job.style as StyleId) : DEFAULT_STYLE];
-
   const one = async (it: (typeof todo)[number], idx: number) => {
-    const refs = [...it.primaryCropUrls.slice(0, 3), ...(it.primaryCutoutUrl ? [it.primaryCutoutUrl] : [])];
-    const subject = `${it.title || it.category}${it.color ? `, ${it.color}` : ""}${it.material ? `, ${it.material}` : ""}`;
-    const base: Record<string, unknown> = { cutoutUrl: it.primaryCutoutUrl };
-    try {
-      const studio = await imageEdit({ prompt: studioPrompt(subject), images: refs, size: "1024x1024", format: "png" });
-      usd += studio.usd;
-      base.studioUrl = await putBlob(`jobs/${job.code}/items/${runId}/${it.code}/studio.png`, studio.images[0]);
-    } catch (e) {
-      log(`${it.code} studio 失敗 ${(e as Error).message.slice(0, 120)}`);
-    }
-    try {
-      const life = await imageEdit({ prompt: lifestylePrompt(subject, style.hint, it.sceneHint, SCENE_VARIATIONS[idx % SCENE_VARIATIONS.length]), images: refs, size: "1024x1024", format: "jpeg" });
-      usd += life.usd;
-      base.lifestyleUrl = await putBlob(`jobs/${job.code}/items/${runId}/${it.code}/lifestyle.jpg`, life.images[0]);
-    } catch (e) {
-      log(`${it.code} lifestyle 失敗 ${(e as Error).message.slice(0, 120)}`);
-    }
-    await assetRepo.upsert(it._id!, jobId, { ...base, status: "pending" });
+    const r = await shootItem(job, it, { which: "both", variation: idx });
+    usd += r.usd;
     made++;
-    log(`${it.code} 圖完成`);
+    log(`${it.code} 圖完成${r.errors.length ? `（${r.errors.join("；")}）` : ""}`);
   };
 
   for (let i = 0; i < todo.length; i += CONCURRENCY) {
@@ -69,10 +84,10 @@ const FIDELITY = [
   "Do not add any new text, captions, watermarks or graphics. No people's faces.",
 ].join(" ");
 
-function studioPrompt(subject: string) {
-  return `Professional e-commerce product photo of ${subject}. ${FIDELITY} Centered on a seamless pure white background, soft studio lighting, gentle natural contact shadow, square format, sharp focus on the product.`;
+function studioPrompt(subject: string, hint?: string) {
+  return `Professional e-commerce product photo of ${subject}. ${FIDELITY} Centered on a seamless pure white background, soft studio lighting, gentle natural contact shadow, square format, sharp focus on the product.${hint ? ` Additional direction from the seller: ${hint}.` : ""}`;
 }
 
-function lifestylePrompt(subject: string, styleHint: string, sceneHint: string, variation: string) {
-  return `Lifestyle product photo of ${subject}. ${FIDELITY} Style: ${styleHint}. ${sceneHint ? `Scene: ${sceneHint}. ` : ""}Composition: ${variation}. Square format, the product sharp and clearly the hero, leave some clean space around it.`;
+function lifestylePrompt(subject: string, styleHint: string, sceneHint: string, variation: string, hint?: string) {
+  return `Lifestyle product photo of ${subject}. ${FIDELITY} Style: ${styleHint}. ${sceneHint ? `Scene: ${sceneHint}. ` : ""}Composition: ${variation}.${hint ? ` Additional direction from the seller: ${hint}.` : ""} Square format, the product sharp and clearly the hero, leave some clean space around it.`;
 }

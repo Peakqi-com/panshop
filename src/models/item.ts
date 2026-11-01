@@ -11,6 +11,7 @@ export const ItemSchema = z.object({
   category: z.string(),
   primaryCropUrls: z.array(z.string().url()).default([]),
   primaryCutoutUrl: z.string().url().optional(),
+  heroUrl: z.string().url().optional(),        // 使用者指定的主圖
   title: z.string().default(""),
   color: z.string().default(""),
   material: z.string().default(""),
@@ -42,4 +43,5 @@ export const ItemPatchSchema = z.object({
   description: z.string().max(2000).optional(),
   category: z.string().max(50).optional(),
   status: z.enum(["draft", "confirmed", "deleted"]).optional(),
+  heroUrl: z.string().url().optional(),
 });

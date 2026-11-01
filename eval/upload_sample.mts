@@ -1,4 +1,4 @@
 import { promises as fs } from "node:fs";
 import { putBlob } from "../src/lib/blob";
-const url = await putBlob("samples/synthetic-8-items.mp4", await fs.readFile("eval/footage/synthetic.mp4"), "video/mp4");
-console.log(url);
+const [file = "eval/footage/synthetic.mp4", key = "samples/synthetic-8-items.mp4"] = process.argv.slice(2);
+console.log(await putBlob(key, await fs.readFile(file), "video/mp4"));

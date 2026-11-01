@@ -12,7 +12,10 @@ export const AssetSchema = z.object({
   reelUrl: z.string().url().optional(),
   reelDurationSec: z.number().optional(),
   caption: z.string().default(""),
+  hook: z.string().default(""),               // 短片開頭一句
+  sellingPoints: z.array(z.string()).default([]),  // 三個賣點，短片賣點卡用
   voiceover: z.string().default(""),
+  history: z.array(z.object({ kind: z.string(), url: z.string(), at: z.date() })).default([]),  // 重做前的舊圖
   status: z.enum(["pending", "done", "failed"]).default("pending"),
   error: z.string().optional(),
   createdAt: z.date(),

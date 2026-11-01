@@ -20,7 +20,8 @@ const Copy = z.object({
   items: z.array(z.object({
     code: z.string(),
     caption: z.string().describe("IG 貼文文案，繁體中文，3 到 4 行，含價格與「留言 代碼 取得連結」，最多 3 個 hashtag"),
-    hook: z.string().describe("短影片封面上的一句話，10 字內"),
+    hook: z.string().describe("短影片開頭的一句鉤子，10 字內"),
+    sellingPoints: z.array(z.string()).describe("三個賣點，每個 4 到 8 字，只能來自畫面與資料"),
     voiceover: z.string().describe("15 秒口白，繁體中文"),
   })),
 });
@@ -49,7 +50,7 @@ const render: StageFn = async ({ job, jobId, log }) => {
     usd += u;
     for (const c of data.items) {
       const it = needCopy.find((i) => i.code === c.code);
-      if (it) await assetRepo.upsert(it._id!, jobId, { caption: clean(c.caption), voiceover: `${clean(c.hook)}\n${clean(c.voiceover)}` });
+      if (it) await assetRepo.upsert(it._id!, jobId, { caption: clean(c.caption), hook: clean(c.hook), sellingPoints: c.sellingPoints.slice(0, 3).map(clean), voiceover: clean(c.voiceover) });
     }
   }
   const assets2 = new Map((await assetRepo.forJob(jobId)).map((a) => [String(a.itemId), a]));
@@ -77,13 +78,13 @@ const render: StageFn = async ({ job, jobId, log }) => {
         return { note: `短影片 ${list.length - todo.length + made}/${list.length}，繼續…`, again: true };
       }
       const a = assets2.get(String(it._id));
-      const hook = (a?.voiceover ?? "").split("\n")[0] || it.title;
+      const hook = a?.hook || it.title;
       const priceText = it.price != null ? `${job.currency} ${it.price.toLocaleString()}` : "私訊詢價";
       const itemDir = path.join(dir, it.code);
       await fs.mkdir(itemDir, { recursive: true });
 
       // 封面與結尾字卡用 canvas 畫（含中文字），片段用 overlay 貼代碼標籤，不依賴 drawtext
-      const heroUrl = a?.studioUrl ?? a?.cutoutUrl ?? it.primaryCutoutUrl ?? it.primaryCropUrls[0];
+      const heroUrl = it.heroUrl ?? a?.studioUrl ?? a?.cutoutUrl ?? it.primaryCutoutUrl ?? it.primaryCropUrls[0];
       const hero = Buffer.from(await (await fetch(heroUrl)).arrayBuffer());
       const heroPng = await sharp(hero).resize(W - 160, W - 160, { fit: "contain", background: "#ffffff" }).png().toBuffer();
       const coverPng = path.join(itemDir, "cover.png");
