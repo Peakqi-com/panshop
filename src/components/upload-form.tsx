@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { STYLES, DEFAULT_STYLE, type StyleId } from "@/lib/config";
 
-export function UploadForm({ needPasscode, sampleAvailable }: { needPasscode: boolean; sampleAvailable: boolean }) {
+export function UploadForm({ needPasscode, sampleAvailable, maxVideoSec = 240, maxUploadMb = 300 }: { needPasscode: boolean; sampleAvailable: boolean; maxVideoSec?: number; maxUploadMb?: number }) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [shopName, setShopName] = useState("");
@@ -15,6 +15,8 @@ export function UploadForm({ needPasscode, sampleAvailable }: { needPasscode: bo
   const [phase, setPhase] = useState<"idle" | "upload" | "create" | "sample">("idle");
   const [error, setError] = useState<string | null>(null);
   const [drag, setDrag] = useState(false);
+  const [meta, setMeta] = useState<{ url: string; durationSec: number } | null>(null);
+  const [warn, setWarn] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function createJob(videoUrl: string, fileName: string, bytes?: number, sample = false) {
@@ -50,7 +52,22 @@ export function UploadForm({ needPasscode, sampleAvailable }: { needPasscode: bo
   }
 
   const busy = phase !== "idle";
-  const pick = (f: File | undefined | null) => { if (f) { setFile(f); setError(null); } };
+  const pick = (f: File | undefined | null) => {
+    if (!f) return;
+    setFile(f); setError(null); setWarn(null);
+    const url = URL.createObjectURL(f);
+    const v = document.createElement("video");
+    v.preload = "metadata"; v.src = url;
+    v.onloadedmetadata = () => {
+      const d = v.duration;
+      setMeta({ url, durationSec: d });
+      const problems: string[] = [];
+      if (d > maxVideoSec) problems.push(`影片 ${Math.round(d)} 秒，超過 ${maxVideoSec} 秒上限`);
+      if (f.size > maxUploadMb * 1024 * 1024) problems.push(`檔案 ${(f.size / 1024 / 1024).toFixed(0)} MB，超過 ${maxUploadMb} MB 上限`);
+      if (d < 8) problems.push("影片太短，每件商品至少要在鏡頭內三秒");
+      setWarn(problems.join("；") || null);
+    };
+  };
 
   return (
     <form onSubmit={submit} className="card rise p-6 shadow-sm">
@@ -65,13 +82,14 @@ export function UploadForm({ needPasscode, sampleAvailable }: { needPasscode: bo
         <div className="text-3xl">🎥</div>
         {file ? (
           <>
+            {meta && <video src={meta.url} muted playsInline className="mt-2 max-h-40 rounded-lg" onClick={(e) => e.stopPropagation()} controls />}
             <div className="mt-2 font-medium">{file.name}</div>
-            <div className="text-xs text-stone-500">{(file.size / 1024 / 1024).toFixed(1)} MB · 點一下可換檔</div>
+            <div className="text-xs text-stone-500">{(file.size / 1024 / 1024).toFixed(1)} MB{meta ? ` · ${Math.round(meta.durationSec)} 秒` : ""} · 點一下可換檔</div>
           </>
         ) : (
           <>
             <div className="mt-2 font-medium">把商品影片拖進來，或點一下選擇</div>
-            <div className="text-xs text-stone-500">MP4 或 MOV · 1 到 3 分鐘 · 300 MB 以內</div>
+            <div className="text-xs text-stone-500">MP4 或 MOV · 最長 {Math.round(maxVideoSec / 60)} 分鐘 · {maxUploadMb} MB 以內</div>
           </>
         )}
       </div>
@@ -95,7 +113,8 @@ export function UploadForm({ needPasscode, sampleAvailable }: { needPasscode: bo
         )}
       </div>
 
-      <button disabled={!file || busy} className="btn btn-primary mt-4 w-full py-3 text-base">
+      {warn && <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{warn}</p>}
+      <button disabled={!file || busy || !!warn} className="btn btn-primary mt-4 w-full py-3 text-base">
         {phase === "upload" ? `上傳中 ${Math.round(progress ?? 0)}%` : phase === "create" ? "建立中…" : "開始分析"}
       </button>
       {phase === "upload" && <div className="mt-2 h-1.5 overflow-hidden rounded bg-stone-100"><div className="h-full bg-orange-500 transition-all" style={{ width: `${progress ?? 0}%` }} /></div>}

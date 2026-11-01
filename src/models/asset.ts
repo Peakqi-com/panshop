@@ -12,7 +12,9 @@ export const AssetSchema = z.object({
   coverUrl: z.string().url().optional(),      // Reels 封面
   reelUrl: z.string().url().optional(),
   reelDurationSec: z.number().optional(),
-  caption: z.string().default(""),
+  caption: z.string().default(""),            // 貼文（3 到 4 行）
+  captionShort: z.string().default(""),       // 限動一句
+  captionLong: z.string().default(""),        // 商品頁完整介紹
   hook: z.string().default(""),               // 短片開頭一句
   sellingPoints: z.array(z.string()).default([]),  // 三個賣點，短片賣點卡用
   voiceover: z.string().default(""),

@@ -22,6 +22,8 @@ const Copy = z.object({
   items: z.array(z.object({
     code: z.string(),
     caption: z.string().describe("IG 貼文文案，繁體中文，3 到 4 行，含價格與「留言 代碼 取得連結」，最多 3 個 hashtag"),
+    captionShort: z.string().describe("限時動態用的一句話，15 字內，含代碼"),
+    captionLong: z.string().describe("商品頁完整介紹，80 到 150 字，分兩段，不含 hashtag"),
     hook: z.string().describe("短影片開頭的一句鉤子，10 字內"),
     sellingPoints: z.array(z.string()).describe("三個賣點，每個 4 到 8 字，只能來自畫面與資料"),
     voiceover: z.string().describe("15 秒口白，繁體中文"),
@@ -69,13 +71,13 @@ export default render;
 
 async function writeCopy(job: Job, jobId: ObjectId, needCopy: Item[]) {
   const { data, usd } = await sparkJSON({
-    schema: Copy, name: "copy", effort: "low", maxTokens: 6000,
+    schema: Copy, name: "copy", effort: "low", maxTokens: 9000,
     system: `你是台灣的社群小編，替小賣家寫商品貼文與短影片口白。語氣親切、具體、不浮誇，只用繁體中文、阿拉伯數字與常見標點，不夾雜其他語言。幣別 ${job.currency}。店名「${job.shopName || "本店"}」。只能寫畫面與資料裡看得到的事實：不得捏造認證、檢驗、產地、功效、規格數字，也不得自行加優惠、折扣、贈品、免運、限時。沒有價格就寫「價格請私訊」。`,
     parts: [{ text: `請替以下每件商品各寫一份：\n${needCopy.map((i) => `- ${i.code}｜${i.title}｜${i.color} ${i.material}｜${i.price != null ? `${job.currency} ${i.price}` : "價格私訊"}｜${i.description}`).join("\n")}` }],
   });
   for (const c of data.items) {
     const it = needCopy.find((i) => i.code === c.code);
-    if (it) await assetRepo.upsert(it._id!, jobId, { caption: clean(c.caption), hook: clean(c.hook), sellingPoints: c.sellingPoints.slice(0, 3).map(clean), voiceover: clean(c.voiceover) });
+    if (it) await assetRepo.upsert(it._id!, jobId, { caption: clean(c.caption), captionShort: clean(c.captionShort), captionLong: clean(c.captionLong), hook: clean(c.hook), sellingPoints: c.sellingPoints.slice(0, 3).map(clean), voiceover: clean(c.voiceover) });
   }
   return usd;
 }

@@ -5,6 +5,8 @@ import { assets } from "@/repositories/assets";
 
 const Patch = z.object({
   caption: z.string().max(2000).optional(),
+  captionShort: z.string().max(200).optional(),
+  captionLong: z.string().max(4000).optional(),
   hook: z.string().max(60).optional(),
   voiceover: z.string().max(1000).optional(),
   sellingPoints: z.array(z.string().max(30)).max(3).optional(),

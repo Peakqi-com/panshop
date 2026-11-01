@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fmtTime } from "@/lib/format";
-import { STAGES, STAGE_LABEL, type Stage } from "@/lib/stages";
+import { STAGES, STAGE_LABEL, AUTO_STAGES, PRODUCE_STAGES, estimateRemaining, type Stage } from "@/lib/stages";
 import { ReviewTable } from "./review-table";
 import { Timeline } from "./timeline";
 import { Outputs } from "./outputs";
@@ -28,7 +28,7 @@ export type ItemRow = {
   confidence: { title: number; price: number; overall: number }; sources: { vision: boolean; speech: boolean }; speechEvidence: string;
 };
 export type TrackRow = { _id: string; category: string; samObjectId: string; startSec: number; endSec: number; boxes: { t: number; x1: number; y1: number; x2: number; y2: number; w: number; h: number }[] };
-export type AssetRow = { itemId: string; cutoutUrl?: string; studioUrl?: string; lifestyleUrl?: string; coverUrl?: string; reelUrl?: string; shots?: { kind: string; label: string; url: string }[]; caption: string; hook?: string; sellingPoints?: string[]; voiceover?: string; history?: { kind: string; url: string }[]; status: string };
+export type AssetRow = { itemId: string; cutoutUrl?: string; studioUrl?: string; lifestyleUrl?: string; coverUrl?: string; reelUrl?: string; shots?: { kind: string; label: string; url: string }[]; caption: string; captionShort?: string; captionLong?: string; hook?: string; sellingPoints?: string[]; voiceover?: string; history?: { kind: string; url: string }[]; status: string };
 
 const STAGE_HINT: Record<Stage, string> = {
   extract: "讀取影片、抽出影格與音軌",
@@ -117,7 +117,11 @@ export function JobView({ code }: { code: string }) {
             </li>
           ))}
         </ol>
-        {current && current.status === "running" && <p className="mt-3 text-sm text-stone-600">{STAGE_HINT[current.key]}…</p>}
+        {busy && (() => {
+          const chain = job.status === "producing" ? PRODUCE_STAGES : AUTO_STAGES;
+          const eta = estimateRemaining(job.stages, chain, job.video.durationSec, job.metrics.itemCount);
+          return <p className="mt-3 text-sm text-stone-600">{current && current.status === "running" ? `${STAGE_HINT[current.key]}…` : "排隊中…"}<span className="ml-2 text-stone-400">預估還要約 {eta >= 90 ? `${Math.ceil(eta / 60)} 分鐘` : `${eta} 秒`}</span></p>;
+        })()}
         {job.status === "failed" && (
           <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             <div className="font-medium">{current ? `${current.label} 失敗` : "處理失敗"}</div>

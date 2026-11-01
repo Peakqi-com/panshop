@@ -34,7 +34,7 @@ export default async function Home() {
             ))}
           </ol>
         </div>
-        <UploadForm needPasscode={!!process.env.UPLOAD_PASSCODE} sampleAvailable={!!(cfg.sampleVideoUrl || process.env.SAMPLE_VIDEO_URL)} />
+        <UploadForm needPasscode={!!process.env.UPLOAD_PASSCODE} sampleAvailable={!!(cfg.sampleVideoUrl || process.env.SAMPLE_VIDEO_URL)} maxVideoSec={cfg.maxVideoSec} maxUploadMb={cfg.maxUploadMb} />
       </section>
 
       {recent.length > 0 && (

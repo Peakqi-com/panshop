@@ -92,7 +92,9 @@ function ItemCard({ item: it, asset: a, producing, jobStyle, currency, onChange,
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState("");
   const [style, setStyle] = useState<string>(jobStyle);
-  const [form, setForm] = useState({ title: it.title, price: it.price == null ? "" : String(it.price), caption: a?.caption ?? "", hook: a?.hook ?? "", voiceover: a?.voiceover ?? "", sellingPoints: (a?.sellingPoints ?? []).join("\n") });
+  const [form, setForm] = useState({ title: it.title, price: it.price == null ? "" : String(it.price), caption: a?.caption ?? "", captionShort: a?.captionShort ?? "", captionLong: a?.captionLong ?? "", hook: a?.hook ?? "", voiceover: a?.voiceover ?? "", sellingPoints: (a?.sellingPoints ?? []).join("\n") });
+  const [capTab, setCapTab] = useState<"short" | "post" | "long">("post");
+  const captionOf = (k: typeof capTab) => (k === "short" ? a?.captionShort : k === "long" ? a?.captionLong : a?.caption) || "";
   // 商品卡只放生成的多角度圖與情境圖；原影片截圖不進卡片
   const KIND_LABEL: Record<string, string> = { front: "正面", threeQuarter: "四十五度", side: "側面", lifestyle: "情境" };
   const shots = a?.shots?.length ? a.shots : [a?.studioUrl && { kind: "threeQuarter", label: "棚拍", url: a.studioUrl }, a?.lifestyleUrl && { kind: "lifestyle", label: "情境", url: a.lifestyleUrl }].filter(Boolean) as { kind: string; label: string; url: string }[];
@@ -107,7 +109,7 @@ function ItemCard({ item: it, asset: a, producing, jobStyle, currency, onChange,
     setBusy(true);
     const price = form.price === "" ? null : Number(form.price);
     const r1 = await fetch(`/api/items/${it._id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ title: form.title, price }) });
-    const r2 = await fetch(`/api/items/${it._id}/asset`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ caption: form.caption, hook: form.hook, voiceover: form.voiceover, sellingPoints: form.sellingPoints.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 3) }) });
+    const r2 = await fetch(`/api/items/${it._id}/asset`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ caption: form.caption, captionShort: form.captionShort, captionLong: form.captionLong, hook: form.hook, voiceover: form.voiceover, sellingPoints: form.sellingPoints.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 3) }) });
     say(r1.ok && r2.ok ? "已儲存" : "儲存失敗");
     setBusy(false); setEditing(false); onChange();
   }
@@ -148,9 +150,16 @@ function ItemCard({ item: it, asset: a, producing, jobStyle, currency, onChange,
           <>
             {a?.hook && <p className="mt-3 text-sm font-medium">{a.hook}</p>}
             {a?.sellingPoints && a.sellingPoints.length > 0 && <ul className="mt-1 flex flex-wrap gap-1">{a.sellingPoints.map((s) => <li key={s} className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-700">{s}</li>)}</ul>}
-            {a?.caption ? <p className="mt-2 whitespace-pre-line text-xs text-stone-500">{a.caption}</p> : producing ? <div className="skeleton mt-2 h-10 rounded" /> : null}
+            {a?.caption ? (
+              <>
+                <div className="mt-2 flex gap-1 text-[11px]">
+                  {([["short", "限動"], ["post", "貼文"], ["long", "商品頁"]] as const).map(([k, l]) => <button key={k} onClick={() => setCapTab(k)} className={`rounded-full px-2 py-0.5 ${capTab === k ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-600"}`}>{l}</button>)}
+                </div>
+                <p className="mt-1 whitespace-pre-line text-xs text-stone-500">{captionOf(capTab) || "（這個長度還沒有文案，按編輯可補）"}</p>
+              </>
+            ) : producing ? <div className="skeleton mt-2 h-10 rounded" /> : null}
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
-              {a?.caption && <button onClick={async () => say((await copyText(a.caption)) ? "文案已複製" : "複製失敗")} className="btn btn-ghost px-2 py-1">複製文案</button>}
+              {a?.caption && <button onClick={async () => say((await copyText(captionOf(capTab))) ? "文案已複製" : "複製失敗")} className="btn btn-ghost px-2 py-1">複製文案</button>}
               <button onClick={() => setEditing(true)} className="btn btn-ghost px-2 py-1">編輯</button>
               <button disabled={busy} onClick={() => setRegen(regen ? null : "both")} className="btn btn-ghost px-2 py-1">換一張</button>
               <button disabled={busy} onClick={regenerateVideo} className="btn btn-ghost px-2 py-1">重做短片</button>
@@ -162,7 +171,9 @@ function ItemCard({ item: it, asset: a, producing, jobStyle, currency, onChange,
             <label className="block">價格（{currency}）<input value={form.price} inputMode="decimal" onChange={(e) => setForm({ ...form, price: e.target.value })} className="input mt-0.5 w-32" /></label>
             <label className="block">短片開頭一句<input value={form.hook} onChange={(e) => setForm({ ...form, hook: e.target.value })} className="input mt-0.5" /></label>
             <label className="block">三個賣點（一行一個）<textarea value={form.sellingPoints} onChange={(e) => setForm({ ...form, sellingPoints: e.target.value })} rows={3} className="input mt-0.5" /></label>
+            <label className="block">限動一句<input value={form.captionShort} onChange={(e) => setForm({ ...form, captionShort: e.target.value })} className="input mt-0.5" /></label>
             <label className="block">貼文文案<textarea value={form.caption} onChange={(e) => setForm({ ...form, caption: e.target.value })} rows={4} className="input mt-0.5" /></label>
+            <label className="block">商品頁完整介紹<textarea value={form.captionLong} onChange={(e) => setForm({ ...form, captionLong: e.target.value })} rows={4} className="input mt-0.5" /></label>
             <label className="block">口白<textarea value={form.voiceover} onChange={(e) => setForm({ ...form, voiceover: e.target.value })} rows={3} className="input mt-0.5" /></label>
             <div className="flex gap-2"><button disabled={busy} onClick={save} className="btn btn-primary px-3 py-1.5">儲存</button><button onClick={() => setEditing(false)} className="btn btn-ghost px-3 py-1.5">取消</button></div>
             <p className="text-stone-400">改完後按「重做短片」才會更新影片。</p>
