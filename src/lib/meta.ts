@@ -45,19 +45,25 @@ export async function sparkJSON<T>(opts: {
     reasoning_effort: opts.effort ?? "low",
     max_completion_tokens: opts.maxTokens ?? 4000,
   };
-  const r = await fetch(`${META_BASE}/chat/completions`, { method: "POST", headers: await headers({ "content-type": "application/json" }), body: JSON.stringify(body) });
-  if (!r.ok) await fail(r, "spark");
-  const j = (await r.json()) as { choices: { message: { content: string | null } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
-  const raw = j.choices?.[0]?.message?.content ?? "";
-  const usd = (j.usage?.prompt_tokens ?? 0) * PRICE.sparkIn + (j.usage?.completion_tokens ?? 0) * PRICE.sparkOut;
-  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
-    throw new Error(`spark 回傳不是 JSON：${cleaned.slice(0, 300)}`);
+  let usd = 0;
+  let lastErr = "";
+  // 偶爾會回空字串（推理把 token 用完或輸出被截斷），最多試兩次，第二次放大輸出上限、降低推理強度
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const b = attempt === 0 ? body : { ...body, max_completion_tokens: Math.max(8000, (opts.maxTokens ?? 4000) * 2), reasoning_effort: "low" };
+    const r = await fetch(`${META_BASE}/chat/completions`, { method: "POST", headers: await headers({ "content-type": "application/json" }), body: JSON.stringify(b) });
+    if (!r.ok) await fail(r, "spark");
+    const j = (await r.json()) as { choices: { message: { content: string | null }; finish_reason?: string }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+    const raw = j.choices?.[0]?.message?.content ?? "";
+    usd += (j.usage?.prompt_tokens ?? 0) * PRICE.sparkIn + (j.usage?.completion_tokens ?? 0) * PRICE.sparkOut;
+    const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    try {
+      const parsed = JSON.parse(cleaned);
+      return { data: opts.schema.parse(parsed), usd, raw };
+    } catch (e) {
+      lastErr = `spark 回傳不是合法 JSON（finish=${j.choices?.[0]?.finish_reason ?? "?"}，${cleaned.length} 字）：${cleaned.slice(0, 200)} ${e instanceof Error ? e.message.slice(0, 120) : ""}`;
+    }
   }
-  return { data: opts.schema.parse(parsed), usd, raw };
+  throw new Error(lastErr);
 }
 
 /** 自由文字（文案用） */

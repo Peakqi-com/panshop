@@ -18,6 +18,7 @@ const shoot: StageFn = async ({ job, jobId, log }) => {
   if (!todo.length) return { note: `${list.length} 件商品圖` };
   let usd = 0, made = 0;
 
+  const runId = Date.now().toString(36);
   const style = STYLES[(job.style as StyleId) in STYLES ? (job.style as StyleId) : DEFAULT_STYLE];
 
   const one = async (it: (typeof todo)[number], idx: number) => {
@@ -27,14 +28,14 @@ const shoot: StageFn = async ({ job, jobId, log }) => {
     try {
       const studio = await imageEdit({ prompt: studioPrompt(subject), images: refs, size: "1024x1024", format: "png" });
       usd += studio.usd;
-      base.studioUrl = await putBlob(`jobs/${job.code}/items/${it.code}/studio.png`, studio.images[0]);
+      base.studioUrl = await putBlob(`jobs/${job.code}/items/${runId}/${it.code}/studio.png`, studio.images[0]);
     } catch (e) {
       log(`${it.code} studio 失敗 ${(e as Error).message.slice(0, 120)}`);
     }
     try {
       const life = await imageEdit({ prompt: lifestylePrompt(subject, style.hint, it.sceneHint, SCENE_VARIATIONS[idx % SCENE_VARIATIONS.length]), images: refs, size: "1024x1024", format: "jpeg" });
       usd += life.usd;
-      base.lifestyleUrl = await putBlob(`jobs/${job.code}/items/${it.code}/lifestyle.jpg`, life.images[0]);
+      base.lifestyleUrl = await putBlob(`jobs/${job.code}/items/${runId}/${it.code}/lifestyle.jpg`, life.images[0]);
     } catch (e) {
       log(`${it.code} lifestyle 失敗 ${(e as Error).message.slice(0, 120)}`);
     }

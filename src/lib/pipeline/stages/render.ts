@@ -60,6 +60,7 @@ const render: StageFn = async ({ job, jobId, log }) => {
     return { note: `${list.length} 支短影片` };
   }
 
+  const runId = Date.now().toString(36);
   const dir = await tmpDir();
   try {
     const src = path.join(dir, "src.mp4");
@@ -91,7 +92,7 @@ const render: StageFn = async ({ job, jobId, log }) => {
       await fs.writeFile(endPng, endCard(W, H, `留言 ${it.code} 取得連結`));
       const badgePng = path.join(itemDir, "badge.png");
       await fs.writeFile(badgePng, badge(it.code));
-      const coverUrl = await putFile(`jobs/${job.code}/items/${it.code}/cover.png`, coverPng);
+      const coverUrl = await putFile(`jobs/${job.code}/items/${runId}/${it.code}/cover.png`, coverPng);
 
       // 片段：這件商品的 track 裡挑最多 2 段、各 4 秒，裁成 9:16 跟著框
       const segs = pickSegments(trs.filter((t) => it.trackIds.some((id) => String(id) === String(t._id))), job.video.durationSec ?? 0);
@@ -112,7 +113,7 @@ const render: StageFn = async ({ job, jobId, log }) => {
       filters.push(`${parts.join("")}concat=n=${parts.length}:v=1:a=0[out]`);
       const reel = path.join(itemDir, "reel.mp4");
       await run([...inputs, "-filter_complex", filters.join(";"), "-map", "[out]", "-r", "30", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-y", reel], { timeoutMs: 120_000 });
-      const reelUrl = await putFile(`jobs/${job.code}/items/${it.code}/reel.mp4`, reel);
+      const reelUrl = await putFile(`jobs/${job.code}/items/${runId}/${it.code}/reel.mp4`, reel);
       const dur = 2.2 * 2 + segs.reduce((s, x) => s + x.dur, 0);
       await assetRepo.upsert(it._id!, jobId, { coverUrl, reelUrl, reelDurationSec: Number(dur.toFixed(1)), status: "done" });
       made++;

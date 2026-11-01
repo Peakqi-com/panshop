@@ -26,7 +26,11 @@ function edgeNote(t: Track) {
  * 規則二：不重疊的 track 才可能是同一件出鏡再入鏡，交給 Spark 看裁圖判斷。
  */
 const Verify = z.object({
-  tracks: z.array(z.object({ index: z.number().int(), category: z.string().describe("清單中的品類名；都不是或不是商品就填 none") })),
+  tracks: z.array(z.object({
+    index: z.number().int(),
+    category: z.string().describe("清單中的品類名；都不是或不是商品就填 none"),
+    confidence: z.number().describe("0 到 1"),
+  })),
 });
 
 const dedup: StageFn = async ({ job, jobId, log }) => {
@@ -37,6 +41,7 @@ const dedup: StageFn = async ({ job, jobId, log }) => {
 
   // 先驗證品類：SAM 的名詞片語會把長得像的東西一起抓進來（例如把皮革日誌本當成杯子），
   // 用 Spark 看每條 track 的主裁圖重新歸類，不是商品的直接剔除
+  for (const t of all) if (t.samCategory) t.category = t.samCategory;  // 重跑時從 SAM 原判定重新驗證，不累積上一輪的修改
   const withCrop = all.filter((t) => t.crops.length);
   if (withCrop.length) {
     const names = job.categories.map((c) => c.name);
@@ -44,16 +49,16 @@ const dedup: StageFn = async ({ job, jobId, log }) => {
       schema: Verify, name: "verify_categories", effort: PIPE.sparkEffort,
       system: "你是商品盤點員。依照裁圖判斷每段影像裡的主體屬於哪一個品類；只看主體，不看背景。",
       parts: [
-        { text: `品類清單：${names.join("、")}。以下 ${withCrop.length} 段影像，每段回一個品類；主體不在清單內、或只是桌面、手、包裝、背景雜物，就回 none。` },
-        ...withCrop.flatMap((t, i) => [{ text: `影像 ${i}（原判定：${t.category}）` }, { imageUrl: t.crops[Math.floor(t.crops.length / 2)].url }]),
+        { text: `品類清單：${names.join("、")}。以下 ${withCrop.length} 段影像（白底去背圖，只看被切出來的那個主體，旁邊若有殘留的其他東西不算），每段回一個品類與信心；主體不在清單內、或只是桌面、手、包裝、背景雜物，就回 none。` },
+        ...withCrop.flatMap((t, i) => [{ text: `影像 ${i}（原判定：${t.category}）` }, { imageUrl: (t.cutouts[Math.floor(t.cutouts.length / 2)] ?? t.crops[Math.floor(t.crops.length / 2)]).url }]),
       ],
     });
     usd += u;
     for (const v of data.tracks) {
       const t = withCrop[v.index];
-      if (!t) continue;
-      if (v.category === "none" || !names.includes(v.category)) { t.category = "__drop__"; log(`drop track ${t.samObjectId}: 非商品`); }
-      else if (v.category !== t.category) { log(`track ${t.samObjectId}: ${t.category} → ${v.category}`); t.category = v.category; }
+      if (!t || v.confidence < 0.8) continue;   // 只在很有把握時才改原判定
+      if (v.category === "none") { t.category = "__drop__"; log(`drop track ${t.samObjectId}: 非商品`); }
+      else if (names.includes(v.category) && v.category !== t.category) { log(`track ${t.samObjectId}: ${t.category} → ${v.category}`); t.category = v.category; }
     }
     await Promise.all(all.map((t) => trackRepo.patch(t._id!, { category: t.category })));
   }
@@ -69,7 +74,7 @@ const dedup: StageFn = async ({ job, jobId, log }) => {
     const pairs: [number, number][] = [];
     for (let i = 0; i < ts.length; i++) for (let j = i + 1; j < ts.length; j++) if (!overlaps(ts[i], ts[j])) pairs.push([i, j]);
 
-    if (pairs.length) {
+    if (pairs.length) try {
       const conflict: string[] = [];
       for (let i = 0; i < ts.length; i++) for (let j = i + 1; j < ts.length; j++) if (overlaps(ts[i], ts[j])) conflict.push(`${i + 1}-${j + 1}`);
       const { data, usd: u } = await sparkJSON({
@@ -93,6 +98,8 @@ const dedup: StageFn = async ({ job, jobId, log }) => {
           union(idx[0], idx[k]);
         }
       }
+    } catch (e) {
+      log(`${cat.name} 分組失敗，先各自成件：${(e as Error).message.slice(0, 160)}`);
     }
 
     const groups = new Map<number, Track[]>();

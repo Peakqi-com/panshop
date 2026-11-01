@@ -14,7 +14,8 @@ export type Box = z.infer<typeof BoxSchema>;
 export const TrackSchema = z.object({
   _id: z.instanceof(ObjectId).optional(),
   jobId: z.instanceof(ObjectId),
-  category: z.string(),
+  category: z.string(),          // 目前品類（dedup 驗證後可能改）
+  samCategory: z.string().optional(),  // SAM 當初用哪個品類片語抓到的，重跑時從這個重新驗證
   samObjectId: z.string(),
   startSec: z.number(),
   endSec: z.number(),

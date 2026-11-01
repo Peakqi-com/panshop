@@ -71,7 +71,7 @@ const segment: StageFn = async ({ job, jobId, log }) => {
           if (dur < PIPE.minTrackSec || meanArea < PIPE.minTrackArea || meanConf < PIPE.minTrackConf) continue;
           // 又小又短的片段通常是商品剛進出畫面時的一小角（把手、邊緣），不成一件
           if (meanArea < PIPE.sliverArea && dur < PIPE.sliverSec) continue;
-          drafts.push({ jobId, category: cat.name, samObjectId: k ? `${objectId}-${k}` : objectId, startSec: seg[0].t, endSec: seg[seg.length - 1].t + 1 / fps, boxes: seg, crops: [], cutouts: [], meanConf, meanArea });
+          drafts.push({ jobId, category: cat.name, samCategory: cat.name, samObjectId: k ? `${objectId}-${k}` : objectId, startSec: seg[0].t, endSec: seg[seg.length - 1].t + 1 / fps, boxes: seg, crops: [], cutouts: [], meanConf, meanArea });
         }
       }
     }
@@ -99,6 +99,7 @@ const segment: StageFn = async ({ job, jobId, log }) => {
 
     const uploads: Promise<void>[] = [];
     const tCrop = Date.now();
+    const runId = tCrop.toString(36);  // 每次重跑用新路徑，不覆蓋舊網址（公開 Blob 會被 CDN 快取）
     for (let ti = 0; ti < drafts.length; ti++) {
       const tr = drafts[ti];
       const ranked = [...tr.boxes].sort((a, b) => score(b) - score(a));
@@ -108,7 +109,7 @@ const segment: StageFn = async ({ job, jobId, log }) => {
         if (picked.length >= PIPE.cropsPerTrack) break;
       }
       tr.bestT = picked[0]?.t;
-      const key = `jobs/${job.code}/tracks/${ti}`;
+      const key = `jobs/${job.code}/tracks/${runId}/${ti}`;
       for (let k = 0; k < picked.length; k++) {
         const b = picked[k];
         const file = await frameFile(b.frame);
