@@ -64,15 +64,18 @@ Every stage runs as its own serverless function invocation and writes its status
 
 ## Evaluation
 
-Measured on a real tabletop pan shot during the hackathon. Numbers will be filled in as they are measured.
+First benchmark: a synthetic 81-second tabletop pan with 8 items in 3 categories (3 mugs, 3 notebooks, 2 shoes), spoken names and prices on the audio track, and the camera panning back so that 4 items leave and re-enter the frame. Ground truth is in `eval/labels/synthetic.json`. Real footage numbers will be added once shot.
 
 | Metric | Result |
 |---|---|
-| Item count accuracy after deduplication | TBD |
-| Title and attribute accuracy | TBD |
+| Item count after deduplication | 8 of 8, no ghost items (the 4 re-entries were merged back) |
+| Title and attribute accuracy | 8 of 8 |
+| Price captured from speech | 8 of 8 |
 | Title accuracy, vision only vs. vision + speech | TBD |
-| Processing time for a 3-minute video | TBD |
-| API cost per listing session | TBD (estimate under $1) |
+| Time from upload to review table | about 4 minutes (SAM 3.1 runs once per category, 13 to 18 s each) |
+| API cost per listing session | about $0.45 to the review table, about $0.7 including product shots and videos |
+
+Earlier runs on the same clip produced 10 items (two re-entry fragments not merged, one notebook also picked up by the `mug` prompt). The fixes are the ones described in the pipeline: splitting tracks at gaps, a category check on every track, a rule that co-visible tracks are distinct, and a second merge pass after naming. See `docs/api-notes.md` for measured latencies and model behaviour.
 
 ## Getting started
 
