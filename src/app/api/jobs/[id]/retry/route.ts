@@ -3,9 +3,11 @@ import { z } from "zod";
 import { jobs } from "@/repositories/jobs";
 import { triggerStage } from "@/lib/pipeline";
 import { STAGES, AUTO_STAGES, PRODUCE_STAGES } from "@/lib/stages";
+import { isAdmin } from "@/lib/auth";
 
 /** 從某個 stage 重跑（失敗後用） */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await isAdmin())) return Response.json({ error: "需要管理員登入（/admin）" }, { status: 403 });
   const { id } = await params;
   const body = z.object({ stage: z.enum(STAGES) }).safeParse(await req.json().catch(() => null));
   if (!body.success) return Response.json({ error: "stage 不對" }, { status: 400 });

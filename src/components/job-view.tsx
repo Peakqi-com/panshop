@@ -67,6 +67,20 @@ export function JobView({ code }: { code: string }) {
     return () => { clearTimeout(first); clearInterval(id); };
   }, [load]);
 
+  // 保險：進行中卻沒有任何 stage 在跑（上一個 stage 沒成功啟動下一個），超過 8 秒就請伺服器接起來
+  const idleSince = useRef<number | null>(null);
+  useEffect(() => {
+    if (!data) return;
+    const busyNow = ["processing", "uploaded", "producing"].includes(data.job.status);
+    const running = Object.values(data.job.stages).some((s) => s?.status === "running");
+    if (!busyNow || running) { idleSince.current = null; return; }
+    idleSince.current ??= Date.now();
+    if (Date.now() - idleSince.current > 8000) {
+      idleSince.current = Date.now();
+      fetch(`/api/jobs/${data.job._id}/kick`, { method: "POST" }).catch(() => {});
+    }
+  }, [data]);
+
   const busy = !!data && ["processing", "uploaded", "producing"].includes(data.job.status);
   const stageList = useMemo(() => STAGES.map((s) => ({ key: s, label: STAGE_LABEL[s], ...(data?.job.stages?.[s] ?? { status: "pending" }) })), [data]);
   const current = stageList.find((s) => s.status === "running") ?? stageList.find((s) => s.status === "failed");
@@ -151,10 +165,14 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function RetryButton({ jobId, stage, onDone }: { jobId: string; stage: Stage; onDone: () => void }) {
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   return (
-    <button disabled={busy} onClick={async () => { setBusy(true); await fetch(`/api/jobs/${jobId}/retry`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ stage }) }); setBusy(false); onDone(); }} className="btn btn-ghost mt-2 text-xs">
-      {busy ? "重試中…" : `從「${STAGE_LABEL[stage]}」重跑`}
-    </button>
+    <>
+      <button disabled={busy} onClick={async () => { setBusy(true); const r = await fetch(`/api/jobs/${jobId}/retry`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ stage }) }); if (!r.ok) setErr((await r.json().catch(() => ({}))).error ?? "重試失敗"); setBusy(false); onDone(); }} className="btn btn-ghost mt-2 text-xs">
+        {busy ? "重試中…" : `從「${STAGE_LABEL[stage]}」重跑`}
+      </button>
+      {err && <span className="ml-2 text-xs text-red-700">{err}</span>}
+    </>
   );
 }
 
