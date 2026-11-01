@@ -10,13 +10,13 @@ export default async function AdminJobs({ searchParams }: { searchParams: Promis
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-2xl font-bold">掃描工作</h1>
-        <form className="flex gap-2 text-sm">
+        <form className="flex flex-wrap items-center gap-2 text-sm">
           <select name="status" defaultValue={sp.status ?? ""} className="input w-32">
             <option value="">全部狀態</option>
             {Object.entries(STATUS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
           </select>
           <input name="q" defaultValue={sp.q ?? ""} placeholder="代碼或店名" className="input w-40" />
-          <button className="btn btn-ghost">篩選</button>
+          <button className="btn btn-ghost whitespace-nowrap">篩選</button>
         </form>
       </div>
       <div className="card mt-4 overflow-x-auto">
