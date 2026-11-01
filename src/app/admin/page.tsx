@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fmtTime } from "@/lib/format";
 import { jobs } from "@/repositories/jobs";
 
 const STATUS: Record<string, string> = { uploaded: "排隊中", processing: "分析中", review: "待確認", producing: "產出中", done: "完成", failed: "失敗" };
@@ -50,7 +51,7 @@ export default async function AdminHome() {
                     <Link href={`/admin/jobs/${String(j._id)}`} className="font-medium hover:underline">{j.shopName || "未命名"} <span className="font-mono text-xs text-stone-400">{j.code}</span></Link>
                     <div className="truncate text-xs text-red-700">{st ? `${st[0]}：${st[1].error}` : ""}</div>
                   </div>
-                  <span className="shrink-0 text-xs text-stone-400">{j.createdAt.toLocaleString("zh-TW", { hour12: false })}</span>
+                  <span className="shrink-0 text-xs text-stone-400">{fmtTime(j.createdAt)}</span>
                 </li>
               );
             })}

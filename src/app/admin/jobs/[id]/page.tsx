@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fmtTime } from "@/lib/format";
 import { notFound } from "next/navigation";
 import { ObjectId } from "mongodb";
 import { jobs } from "@/repositories/jobs";
@@ -21,7 +22,7 @@ export default async function AdminJob({ params }: { params: Promise<{ id: strin
         <div>
           <Link href="/admin/jobs" className="text-xs text-stone-500 hover:underline">← 掃描工作</Link>
           <h1 className="text-2xl font-bold">{job.shopName || "未命名"} <span className="font-mono text-base text-stone-400">{job.code}</span></h1>
-          <p className="text-sm text-stone-500">{job.createdAt.toLocaleString("zh-TW", { hour12: false })} · 狀態 {job.status} · 風格 {job.style} · 幣別 {job.currency}</p>
+          <p className="text-sm text-stone-500">{fmtTime(job.createdAt)} · 狀態 {job.status} · 風格 {job.style} · 幣別 {job.currency}</p>
         </div>
         <div className="flex gap-2 text-sm">
           <Link href={`/jobs/${job.code}`} target="_blank" className="btn btn-ghost">前台頁面</Link>

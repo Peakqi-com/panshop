@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { fmtTime } from "@/lib/format";
 import { STAGES, STAGE_LABEL, type Stage } from "@/lib/stages";
 import { ReviewTable } from "./review-table";
 import { Timeline } from "./timeline";
@@ -79,7 +80,7 @@ export function JobView({ code }: { code: string }) {
     <main className="mx-auto max-w-6xl px-4 py-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs text-stone-500">掃描 <span className="font-mono">{job.code}</span> · {new Date(job.createdAt).toLocaleString("zh-TW", { hour12: false })}</p>
+          <p className="text-xs text-stone-500">掃描 <span className="font-mono">{job.code}</span> · {fmtTime(job.createdAt)}</p>
           <h1 className="text-2xl font-bold">{job.shopName || "我的商品"}</h1>
         </div>
         <div className="flex items-center gap-2 text-sm">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fmtTime } from "@/lib/format";
 import { UploadForm } from "@/components/upload-form";
 import { jobs } from "@/repositories/jobs";
 import { settings } from "@/repositories/settings";
@@ -51,7 +52,7 @@ export default async function Home() {
                 <div className="min-w-0">
                   <div className="truncate font-medium">{j.shopName || "未命名"}</div>
                   <div className="text-xs text-stone-500">{STATUS[j.status] ?? j.status}{j.metrics.itemCount != null ? ` · ${j.metrics.itemCount} 件` : ""}</div>
-                  <div className="text-xs text-stone-400">{j.createdAt.toLocaleString("zh-TW", { hour12: false })}</div>
+                  <div className="text-xs text-stone-400">{fmtTime(j.createdAt)}</div>
                 </div>
               </Link>
             ))}

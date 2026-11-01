@@ -23,13 +23,16 @@ body { background: var(--bg); color: var(--fg); }
 @keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
 .skeleton { background: linear-gradient(90deg, #ece8e0 25%, #f5f2ec 37%, #ece8e0 63%); background-size: 800px 100%; animation: shimmer 1.4s infinite linear; }
 
-.card { background: var(--card); border: 1px solid rgb(231 229 228); border-radius: 14px; }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: 10px; padding: .6rem 1rem; font-weight: 500; transition: background .15s, transform .05s; }
-.btn:active { transform: translateY(1px); }
-.btn-primary { background: var(--accent); color: white; }
-.btn-primary:hover { background: #c2410c; }
-.btn-primary:disabled { opacity: .5; }
-.btn-ghost { background: white; border: 1px solid rgb(231 229 228); color: #292524; }
-.btn-ghost:hover { background: #fafaf9; }
-.input { width: 100%; border: 1px solid rgb(214 211 209); border-radius: 8px; padding: .45rem .6rem; background: white; }
-.input:focus { outline: 2px solid #fdba74; outline-offset: 0; border-color: #fb923c; }
+/* 放進 components layer，讓 Tailwind 的 utility（例如 w-32）能覆蓋這些預設 */
+@layer components {
+  .card { background: var(--card); border: 1px solid rgb(231 229 228); border-radius: 14px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: 10px; padding: .6rem 1rem; font-weight: 500; transition: background .15s, transform .05s; }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #c2410c; }
+  .btn-primary:disabled { opacity: .5; }
+  .btn-ghost { background: white; border: 1px solid rgb(231 229 228); color: #292524; }
+  .btn-ghost:hover { background: #fafaf9; }
+  .input { width: 100%; border: 1px solid rgb(214 211 209); border-radius: 8px; padding: .45rem .6rem; background: white; }
+  .input:focus { outline: 2px solid #fdba74; outline-offset: 0; border-color: #fb923c; }
+}

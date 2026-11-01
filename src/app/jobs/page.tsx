@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fmtTime } from "@/lib/format";
 import { jobs } from "@/repositories/jobs";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ export default async function JobsPage() {
             <div className="h-14 w-20 shrink-0 overflow-hidden rounded-md bg-stone-100">{j.frames[0] && <img src={j.frames[0].url} alt="" className="h-full w-full object-cover" />}</div>
             <div className="min-w-0 flex-1">
               <div className="truncate font-medium">{j.shopName || "未命名"} <span className="ml-1 font-mono text-xs text-stone-400">{j.code}</span></div>
-              <div className="text-xs text-stone-500">{j.createdAt.toLocaleString("zh-TW", { hour12: false })}{j.video.durationSec ? ` · ${Math.round(j.video.durationSec)} 秒` : ""}{j.metrics.itemCount != null ? ` · ${j.metrics.itemCount} 件` : ""}</div>
+              <div className="text-xs text-stone-500">{fmtTime(j.createdAt)}{j.video.durationSec ? ` · ${Math.round(j.video.durationSec)} 秒` : ""}{j.metrics.itemCount != null ? ` · ${j.metrics.itemCount} 件` : ""}</div>
             </div>
             <span className={`rounded-full px-2.5 py-1 text-xs ${j.status === "done" ? "bg-green-100 text-green-800" : j.status === "failed" ? "bg-red-100 text-red-700" : j.status === "review" ? "bg-orange-100 text-orange-800" : "bg-stone-100 text-stone-600"}`}>{STATUS[j.status] ?? j.status}</span>
           </Link>

@@ -28,7 +28,7 @@ export function JobsTable({ rows }: { rows: JobRow[] }) {
             {rows.map((j) => (
               <tr key={j.id} className={`border-t border-stone-100 ${sel.has(j.id) ? "bg-red-50/60" : ""}`}>
                 <td className="p-3"><input type="checkbox" checked={sel.has(j.id)} onChange={() => toggle(j.id)} /></td>
-                <td className="p-3 text-xs text-stone-500">{new Date(j.createdAt).toLocaleString("zh-TW", { hour12: false })}</td>
+                <td className="p-3 text-xs text-stone-500">{j.createdAt}</td>
                 <td className="p-3"><Link href={`/admin/jobs/${j.id}`} className="font-medium hover:underline">{j.shopName || "未命名"}</Link> <span className="font-mono text-xs text-stone-400">{j.code}</span></td>
                 <td className="p-3"><span className={`rounded-full px-2 py-0.5 text-xs ${j.status === "done" ? "bg-green-100 text-green-800" : j.status === "failed" ? "bg-red-100 text-red-700" : j.status === "review" ? "bg-orange-100 text-orange-800" : "bg-stone-100 text-stone-600"}`}>{STATUS[j.status] ?? j.status}</span></td>
                 <td className="p-3 text-right">{j.durationSec ? `${Math.round(j.durationSec)}s` : "—"}</td>

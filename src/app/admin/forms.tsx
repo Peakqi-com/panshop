@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
+import { fmtTime } from "@/lib/format";
 import { loginAction, saveSettingAction, saveAppSettingsAction, retryStageAction, deleteJobAction, deleteJobsAction, runHealthAction, type HealthRow } from "./actions";
 import { useRouter } from "next/navigation";
 import { STAGES, STAGE_LABEL, type Stage } from "@/lib/stages";
@@ -26,7 +27,7 @@ export function SettingForm(props: { settingKey: string; label: string; env: str
       <input type="hidden" name="key" value={props.settingKey} />
       <div className="flex items-baseline justify-between">
         <label className="font-medium">{props.label}</label>
-        <span className="text-xs text-stone-500">{status}{props.updatedAt ? `・${new Date(props.updatedAt).toLocaleString("zh-TW", { hour12: false })}` : ""}</span>
+        <span className="text-xs text-stone-500">{status}{props.updatedAt ? `・${fmtTime(props.updatedAt)}` : ""}</span>
       </div>
       <div className="mt-2 flex gap-2">
         <input name="value" type="password" autoComplete="off" className="input flex-1 font-mono text-sm" placeholder="貼上新值" />

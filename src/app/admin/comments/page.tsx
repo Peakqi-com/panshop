@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fmtTime } from "@/lib/format";
 import { getDb } from "@/lib/db";
 import type { Comment } from "@/models/comment";
 import { jobs } from "@/repositories/jobs";
@@ -18,7 +19,7 @@ export default async function AdminComments() {
           <tbody>
             {list.map((c) => { const j = jobMap.get(String(c.jobId)); return (
               <tr key={String(c._id)} className="border-t border-stone-100 align-top">
-                <td className="p-2 text-xs text-stone-500">{c.createdAt.toLocaleString("zh-TW", { hour12: false })}</td>
+                <td className="p-2 text-xs text-stone-500">{fmtTime(c.createdAt)}</td>
                 <td className="p-2 text-xs">{j ? <Link href={`/admin/jobs/${String(j._id)}`} className="hover:underline">{j.shopName || j.code}</Link> : "—"}</td>
                 <td className="p-2">{c.text}</td>
                 <td className="p-2 text-xs">{c.intent}</td>

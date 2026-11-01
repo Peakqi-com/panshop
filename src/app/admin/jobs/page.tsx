@@ -1,4 +1,5 @@
 import { jobs } from "@/repositories/jobs";
+import { fmtTime } from "@/lib/format";
 import { JobsTable, type JobRow } from "./jobs-table";
 
 const STATUS: Record<string, string> = { uploaded: "排隊中", processing: "分析中", review: "待確認", producing: "產出中", done: "完成", failed: "失敗" };
@@ -7,7 +8,7 @@ export default async function AdminJobs({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const list = await jobs.listFiltered({ status: sp.status, q: sp.q?.trim() || undefined, limit: 200 });
   const rows: JobRow[] = list.map((j) => ({
-    id: String(j._id), code: j.code, shopName: j.shopName, status: j.status, createdAt: j.createdAt.toISOString(),
+    id: String(j._id), code: j.code, shopName: j.shopName, status: j.status, createdAt: fmtTime(j.createdAt),
     durationSec: j.video.durationSec ?? null, itemCount: j.metrics.itemCount ?? null, costUsd: j.metrics.costUsd ?? null, style: j.style,
   }));
   return (
