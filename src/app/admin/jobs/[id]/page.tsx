@@ -40,13 +40,13 @@ export default async function AdminJob({ params }: { params: Promise<{ id: strin
       <section className="card mt-4 p-4">
         <h2 className="font-semibold">Stage</h2>
         <table className="mt-2 w-full text-sm">
-          <thead className="text-left text-xs text-stone-500"><tr><th className="py-1">Stage</th><th>狀態</th><th className="text-right">耗時</th><th>備註／錯誤</th></tr></thead>
+          <thead className="text-left text-xs text-stone-500"><tr><th className="py-1">Stage</th><th>狀態</th><th className="pr-4 text-right">耗時</th><th>備註／錯誤</th></tr></thead>
           <tbody>
             {STAGES.map((s) => { const v = job.stages[s]; return (
               <tr key={s} className="border-t border-stone-100 align-top">
                 <td className="py-1.5 font-medium">{STAGE_LABEL[s]} <span className="font-mono text-xs text-stone-400">{s}</span></td>
                 <td className={v?.status === "failed" ? "text-red-700" : v?.status === "done" ? "text-green-700" : "text-stone-500"}>{v?.status ?? "—"}</td>
-                <td className="text-right">{v?.ms ? `${(v.ms / 1000).toFixed(1)}s` : ""}</td>
+                <td className="pr-4 text-right font-mono text-xs">{v?.ms ? `${(v.ms / 1000).toFixed(1)}s` : ""}</td>
                 <td className="max-w-md break-words text-xs text-stone-600">{v?.note}{v?.error && <span className="text-red-700">{v.error}</span>}</td>
               </tr>
             ); })}
