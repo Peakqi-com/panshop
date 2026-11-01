@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.vercel/
+.env
+.env.*
+!.env.example
+__pycache__/
+.venv/
+*.pyc
+.DS_Store
+# local media and eval footage (large; share via Blob)
+eval/footage/
+*.mp4
+*.mov
