@@ -36,7 +36,7 @@ PanShop 是奇鋒國際（[PEAKQI](https://peakqi.com)，台北）參加 [Meta G
 | Muse Image（`muse-image-1.0`） | 三角度棚拍圖、情境圖、9:16 分鏡場景圖，全部以商品自己的裁圖為參考 |
 | Muse Spark Open（開放權重，Baseten 託管） | 可購買頁的留言對商品與回覆草稿。*Built with Muse Spark Open.* |
 
-旁白配音是唯一不是 Meta 模型的部分，因為 Model API 沒有 Meta 的語音合成模型。這是選用功能：在 `/admin` 存了 Fish Audio 或 OpenAI 金鑰，分鏡旁白會照語氣指令念出來；沒有金鑰時，短片改用賣家掃拍時的原聲，或只有字幕。
+整條流程用的全是 Meta 模型。Model API 沒有語音合成模型，所以短片不用合成語音：Muse Voice Transcribe 標出賣家講到每件商品的那一句，合成時從原始音軌切出來，放在主角那一場。賣家沒講到的商品，或口述語言和短片語言不同時，短片只有字幕和音樂。
 
 ## 管線怎麼跑
 
@@ -148,7 +148,7 @@ tests/                   單元測試（vitest）
 - 本產品設計為我們既有、營運中的行銷內容 SaaS 的新模組。該產品只以連結接入，不包含在本 repo；本 repo 沒有任何既有程式碼或客戶素材。
 - Demo 影片拍的是我們自己家裡的物品，沒有第三方商品或品牌。
 - Instagram 與 WhatsApp 發布在藍圖中，不屬於本次送件範圍。目錄匯出採 Meta Commerce Manager 的 CSV 格式。
-- 短片旁白只有在設定金鑰時才使用第三方語音合成。其他所有理解與生成內容的部分都使用 Meta 模型。
+- 不使用合成語音：旁白是賣家原聲，用 Muse Voice Transcribe 定位。所有理解與生成內容的模型都是 Meta 模型。
 
 ## 藍圖
 

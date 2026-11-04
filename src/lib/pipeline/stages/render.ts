@@ -16,7 +16,7 @@ import type { Asset } from "@/models/asset";
 import { renderAd } from "@/lib/video/ad";
 import { renderAdV2, type SceneSpec } from "@/lib/video/ad2";
 import { writeStoryboard, ensureSceneImages, rewriteSceneText } from "@/lib/video/storyboard";
-import { synthesize, stripDirection } from "@/lib/video/tts";
+import { synthesize, stripDirection, THIRD_PARTY_TTS } from "@/lib/video/tts";
 import { resolveMusic } from "@/lib/video/pick-music";
 import { pickSentence, hasChinesePrice, chineseDigitsToArabic } from "@/lib/video/price-text";
 import { settings } from "@/repositories/settings";
@@ -129,7 +129,7 @@ export async function renderItem(job: Job, it: Item, a: Asset, spans: readonly (
       log(`${it.code} 價格改為 ${it.price}，已更新旁白`);
     } else if (sb.price === undefined) sb = { ...sb, price: it.price };
 
-    // 2. 配音：專業 TTS（Fish 優先、OpenAI 備援）→ 賣家原聲 → 無
+    // 2. 配音：只用 Meta 模型時是賣家原聲（Muse Voice Transcribe 的時間戳切出）→ 無口白；第三方 TTS 目前關閉
     const voice = await prepareVoice(job, it, sb.scenes, spans, cfg.voiceMode, dir, log);
 
     // 3. 每一場的素材與時長（旁白比預設長就延長那一場）
@@ -174,7 +174,7 @@ export async function renderItem(job: Job, it: Item, a: Asset, spans: readonly (
 async function prepareVoice(job: Job, it: Item, scenes: { narration: string }[], spans: readonly (readonly [number, number])[], mode: "tts" | "seller" | "none", dir: string, log: (m: string) => void) {
   const clips: ({ path: string; dur: number } | undefined)[] = scenes.map(() => undefined);
   if (mode === "none") return { mode: "none", clips };
-  if (mode === "tts") {
+  if (mode === "tts" && THIRD_PARTY_TTS) {
     let provider = "";
     for (const [i, sc] of scenes.entries()) {
       const text = sc.narration?.trim(); if (!text) continue;
@@ -195,7 +195,10 @@ async function prepareVoice(job: Job, it: Item, scenes: { narration: string }[],
   if (job.video.audioUrl && job.transcript.length && spans.length) {
     const turns = job.transcript.filter((tu) => spans.some(([s, e]) => tu.startSec < e + 1.5 && s - 1.5 < tu.endSec));
     const turn = turns.find((t) => t.prices.length) ?? turns[0];
-    if (turn) {
+    // 英文掃描配中文口述會對不上字幕，這種情況寧可只放字幕與音樂
+    const mismatch = turn && isEn(job) && /[\u4e00-\u9fff]/.test(turn.text);
+    if (mismatch) log(`${it.code} 口述是中文、短片是英文，不放原聲`);
+    if (turn && !mismatch) {
       const seg = pickSentence(turn.text, it);
       const turnDur = Math.max(0.5, turn.endSec - turn.startSec);
       const start = Math.max(0, turn.startSec + turnDur * seg.from - 0.15);

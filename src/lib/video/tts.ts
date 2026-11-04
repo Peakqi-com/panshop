@@ -12,7 +12,11 @@ export const directionsOf = (t: string) => Array.from(t.matchAll(CUE_RE)).map((m
 
 export type TtsResult = { audio: Buffer; mime: string; provider: "fish" | "openai"; model: string };
 
+/** 目前只用 Meta 模型：第三方語音合成先關閉，配音一律用賣家原聲（Muse Voice Transcribe 定位）或無口白 */
+export const THIRD_PARTY_TTS = false;
+
 export async function synthesize(text: string, lang: "zh" | "en" = "zh"): Promise<TtsResult | null> {
+  if (!THIRD_PARTY_TTS) return null;
   const fishKey = await getSetting("FISH_AUDIO_API_KEY");
   if (fishKey) {
     try { return await fish(text, fishKey, (await getSetting("FISH_VOICE_ID")) ?? undefined); } catch (e) { console.warn("fish tts 失敗", (e as Error).message); }

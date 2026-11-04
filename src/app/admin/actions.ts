@@ -152,7 +152,8 @@ export async function runHealthAction(): Promise<HealthRow[]> {
   await timed("Meta Model API（Muse Spark）", async () => { const key = await getSetting("META_API_KEY"); if (!key) throw new Error("未設定金鑰"); const r = await sparkText({ parts: [{ text: "回覆 OK" }], effort: "minimal", maxTokens: 20 }); return `回覆「${r.text.trim().slice(0, 20)}」，$${r.usd.toFixed(5)}`; });
   await timed("Baseten（Muse Spark Open）", async () => { const key = await getSetting("BASETEN_API_KEY"); if (!key) throw new Error("未設定金鑰"); const r = await sparkOpenChat({ user: "回覆 OK", maxTokens: 200 }); return `${r.model}，回覆「${r.text.trim().slice(0, 20)}」`; });
   await timed("配音（Fish Audio 或 OpenAI）", async () => {
-    const { synthesize } = await import("@/lib/video/tts");
+    const { synthesize, THIRD_PARTY_TTS } = await import("@/lib/video/tts");
+    if (!THIRD_PARTY_TTS) return "已關閉：目前只用 Meta 模型，短片用賣家原聲或只有字幕";
     const r = await synthesize("測試");
     if (!r) throw new Error("沒有可用的配音金鑰，短片會退回賣家原聲");
     return `${r.provider} ${r.model}，${Math.round(r.audio.length / 1024)} KB`;

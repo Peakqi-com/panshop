@@ -36,7 +36,7 @@ Small sellers, group-buy hosts, market vendors and resellers rotate inventory ev
 | Muse Image (`muse-image-1.0`) | Studio angles, lifestyle shots and 9:16 storyboard scenes, all referenced on the item's own crops |
 | Muse Spark Open (open weights, hosted on Baseten) | Comment-to-product matching and reply drafts on the shoppable page. *Built with Muse Spark Open.* |
 
-Narration is the one part that is not a Meta model, because no Meta text-to-speech model is available through the Model API. It is optional: with a Fish Audio or OpenAI key stored in `/admin` the storyboard narration is spoken with its tone directions; without one, the video uses the seller's own voice cut from the pan, or captions only.
+Every model in the pipeline is a Meta model. The Model API has no text-to-speech model, so videos do not use synthetic narration: Muse Voice Transcribe timestamps the seller's own words about each product, and the renderer cuts that sentence from the original audio into the hero scene. When the seller didn't speak about an item, or the speech language doesn't match the video language, the video carries captions and music only.
 
 ## How the pipeline works
 
@@ -148,7 +148,7 @@ tests/                   unit tests (vitest)
 - The product is designed as a new module of our production marketing-content SaaS. That product is linked, not included; no existing code or customer assets are in this repository.
 - Demo footage is a pan across our own household items. No third-party products or brands.
 - Instagram and WhatsApp publishing are on the roadmap and are not part of this submission. Catalog export targets the Meta Commerce Manager CSV format.
-- Video narration uses a third-party text-to-speech service only when a key is configured. Everything else that understands or generates content runs on Meta models.
+- No synthetic voice: narration is the seller's own voice, located with Muse Voice Transcribe. Every model that understands or generates content is a Meta model.
 
 ## Roadmap
 

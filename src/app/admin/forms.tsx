@@ -58,7 +58,7 @@ export function AppSettingsForm({ value }: { value: AppSettings }) {
         <label className="text-sm"><span className="font-medium">全站每天花費上限（美元，0＝不限）</span><input name="dailyBudgetUsd" type="number" min={0} max={1000} step="1" defaultValue={value.dailyBudgetUsd} className="input mt-1" /></label>
         <label className="text-sm sm:col-span-2"><span className="font-medium">首頁公告</span><input name="announcement" defaultValue={value.announcement} placeholder="空白不顯示" className="input mt-1" /></label>
         <label className="text-sm"><span className="font-medium">短片配音</span>
-          <select name="voiceMode" defaultValue={value.voiceMode} className="input mt-1"><option value="tts">專業 TTS 含語氣指令（Fish Audio，備援 OpenAI）</option><option value="seller">賣家原聲（從影片口述切出）</option><option value="none">無口白，只有字幕與音樂</option></select>
+          <select name="voiceMode" defaultValue={value.voiceMode} className="input mt-1"><option value="tts" disabled>專業 TTS（暫停：目前只用 Meta 模型）</option><option value="seller">賣家原聲（從影片口述切出）</option><option value="none">無口白，只有字幕與音樂</option></select>
         </label>
         <label className="text-sm"><span className="font-medium">留言對商品用的模型</span>
           <select name="commentModel" defaultValue={value.commentModel} className="input mt-1"><option value="spark-open">Muse Spark Open（Baseten，開放權重）</option><option value="spark">Muse Spark 1.3（Meta Model API）</option></select>
