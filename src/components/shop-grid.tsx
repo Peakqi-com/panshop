@@ -40,14 +40,14 @@ export function ShopGrid({ items, shopName, shopUrl, qrDataUrl, contact }: { ite
       {toast && <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-stone-900 px-4 py-2 text-sm text-white shadow-lg">{toast}</div>}
       <div className="mt-4 flex items-center justify-between gap-2">
         <div className="flex gap-1 overflow-x-auto text-sm">
-          {[ALL, ...cats].map((c) => <button key={c} onClick={() => setCat(c)} className={`whitespace-nowrap rounded-full px-3 py-1 ${cat === c ? "bg-stone-900 text-white" : "bg-white ring-1 ring-stone-200"}`}>{c === ALL ? t("全部", "All") : c}</button>)}
+          {[ALL, ...cats].map((c) => <button key={c} onClick={() => setCat(c)} className={`whitespace-nowrap rounded-full border-2 border-[var(--ink)] px-3 py-1 font-bold ${cat === c ? "bg-[var(--ink)] text-white" : "bg-white hover:bg-[var(--yellow)]"}`}>{c === ALL ? t("全部", "All") : c}</button>)}
         </div>
         <button onClick={doShare} className="btn btn-ghost whitespace-nowrap px-3 py-1 text-xs">{t("分享", "Share")}</button>
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         {visible.map((it) => (
-          <button key={it.id} id={it.code} onClick={() => setOpen(it)} className="card overflow-hidden text-left transition hover:shadow-md">
+          <button key={it.id} id={it.code} onClick={() => setOpen(it)} className="card ps-tilt overflow-hidden text-left">
             <div className="aspect-square bg-white">{it.hero && <img src={it.hero} alt={it.title} className="h-full w-full object-contain" />}</div>
             <div className="p-2.5">
               <div className="font-mono text-[11px] text-stone-400">{it.code}</div>
@@ -89,14 +89,14 @@ function Detail({ item: it, shopName, contact, onClose, say }: { item: ShopItem;
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={onClose}>
       {lb != null && <Lightbox images={images} index={lb} onClose={() => setLb(null)} />}
-      <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-[var(--bg)] sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl border-[3px] border-[var(--ink)] bg-[var(--bg)] sm:rounded-2xl sm:shadow-[8px_8px_0_var(--ink)]" onClick={(e) => e.stopPropagation()}>
         <div className="relative aspect-square bg-white">
           {images[idx] && <img src={images[idx].url} alt={it.title} onClick={() => setLb(idx)} className="h-full w-full cursor-zoom-in object-contain" />}
           <button onClick={onClose} className="absolute right-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-xs text-white">{t("關閉", "Close")}</button>
         </div>
         {images.length > 1 && (
           <div className="flex gap-2 overflow-x-auto px-4 py-3">
-            {images.map((im, k) => <button key={im.url} onClick={() => setIdx(k)} className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg ring-2 ${k === idx ? "ring-orange-400" : "ring-transparent"}`}><img src={im.url} alt="" className="h-full w-full object-cover" /></button>)}
+            {images.map((im, k) => <button key={im.url} onClick={() => setIdx(k)} className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 ${k === idx ? "border-[var(--ink)] ring-2 ring-[var(--accent)]" : "border-stone-300"}`}><img src={im.url} alt="" className="h-full w-full object-cover" /></button>)}
           </div>
         )}
         <div className="px-4 pb-6">
@@ -104,7 +104,7 @@ function Detail({ item: it, shopName, contact, onClose, say }: { item: ShopItem;
           <h2 className="mt-1 text-xl font-semibold">{it.title}</h2>
           {(it.color || it.material) && <p className="mt-1 text-sm text-stone-500">{[it.color, it.material].filter(Boolean).join(" · ")}</p>}
           {it.description && <p className="mt-3 text-sm leading-relaxed text-stone-700">{it.description}</p>}
-          {it.reelUrl && <video src={it.reelUrl} controls playsInline className="mt-4 aspect-[9/16] w-full rounded-xl bg-black" />}
+          {it.reelUrl && <video src={it.reelUrl} controls playsInline className="mt-4 aspect-[9/16] w-full rounded-xl border-[3px] border-[var(--ink)] bg-black" />}
           <OrderBar order={order} shopName={shopName} contact={contact} say={say} />
         </div>
       </div>

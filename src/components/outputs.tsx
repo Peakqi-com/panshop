@@ -47,9 +47,9 @@ export function Outputs({ data, onChange }: { data: JobPayload; onChange: () => 
         </div>
       </div>
 
-      <div className="mt-4 flex w-fit gap-1 rounded-lg bg-stone-100 p-1 text-sm">
+      <div className="mt-4 flex w-fit flex-wrap gap-1 rounded-xl border-[2.5px] border-[var(--ink)] bg-white p-1 text-sm font-bold">
         {([["cards", t("商品卡", "Product cards")], ["reels", t("短影片", "Promo videos")], ["catalog", t("目錄與頁面", "Catalog & shop page")]] as [Tab, string][]).map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)} className={`rounded-md px-3 py-1.5 ${tab === k ? "bg-white shadow-sm" : "text-stone-500"}`}>{l}</button>
+          <button key={k} onClick={() => setTab(k)} className={`rounded-lg px-3 py-1.5 ${tab === k ? "bg-[var(--yellow)] ring-2 ring-[var(--ink)]" : "text-stone-600 hover:bg-stone-100"}`}>{l}</button>
         ))}
       </div>
 
@@ -154,18 +154,18 @@ function ItemCard({ canEdit, onStoryboard, item: it, asset: a, producing, jobSty
         <div className="flex items-baseline justify-between"><span className="font-mono text-xs text-stone-400">{it.code} · {it.category}</span><span className="font-semibold">{it.price != null ? fmtPrice(it.price, currency) : t("未定價", "No price")}</span></div>
         <h3 className="mt-1 font-medium leading-snug">{it.title}</h3>
         <div className="mt-2 flex gap-1">
-          {images.slice(0, 6).map((im, k) => <button key={im.url} onClick={() => setLb(k)} title={im.label} className={`h-11 w-11 overflow-hidden rounded-md ring-1 ${im.url === hero ? "ring-2 ring-orange-400" : "ring-stone-200"}`}><img src={im.url} alt="" className="h-full w-full object-cover" /></button>)}
+          {images.slice(0, 6).map((im, k) => <button key={im.url} onClick={() => setLb(k)} title={im.label} className={`h-11 w-11 overflow-hidden rounded-md border-2 ${im.url === hero ? "border-[var(--ink)] ring-2 ring-[var(--accent)]" : "border-stone-300"}`}><img src={im.url} alt="" className="h-full w-full object-cover" /></button>)}
           {producing && images.length < 4 && Array.from({ length: 4 - images.length }).map((_, k) => <div key={k} className="skeleton h-11 w-11 rounded-md" />)}
         </div>
 
         {!editing ? (
           <>
             {a?.hook && <p className="mt-3 text-sm font-medium">{a.hook}</p>}
-            {a?.sellingPoints && a.sellingPoints.length > 0 && <ul className="mt-1 flex flex-wrap gap-1">{a.sellingPoints.map((s) => <li key={s} className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-700">{s}</li>)}</ul>}
+            {a?.sellingPoints && a.sellingPoints.length > 0 && <ul className="mt-1 flex flex-wrap gap-1">{a.sellingPoints.map((s) => <li key={s} className="rounded-full border-2 border-[var(--ink)] bg-[var(--yellow)] px-2 py-0.5 text-xs font-bold">{s}</li>)}</ul>}
             {a?.caption ? (
               <>
                 <div className="mt-2 flex gap-1 text-[11px]">
-                  {([["short", t("限動", "Story")], ["post", t("貼文", "Post")], ["long", t("商品頁", "Product page")]] as const).map(([k, l]) => <button key={k} onClick={() => setCapTab(k)} className={`rounded-full px-2 py-0.5 ${capTab === k ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-600"}`}>{l}</button>)}
+                  {([["short", t("限動", "Story")], ["post", t("貼文", "Post")], ["long", t("商品頁", "Product page")]] as const).map(([k, l]) => <button key={k} onClick={() => setCapTab(k)} className={`rounded-full border-2 border-[var(--ink)] px-2 py-0.5 font-bold ${capTab === k ? "bg-[var(--ink)] text-white" : "bg-white hover:bg-[var(--yellow)]"}`}>{l}</button>)}
                 </div>
                 <p className="mt-1 whitespace-pre-line text-xs text-stone-500">{captionOf(capTab) || t("（這個長度還沒有文案，按編輯可補）", "(No copy for this length yet — click Edit to add it)")}</p>
               </>

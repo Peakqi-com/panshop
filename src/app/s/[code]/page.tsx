@@ -5,22 +5,28 @@ import { jobs } from "@/repositories/jobs";
 import { items as itemRepo } from "@/repositories/items";
 import { assets as assetRepo } from "@/repositories/assets";
 import { ShopGrid, type ShopItem } from "@/components/shop-grid";
-import { LangToggle } from "@/components/lang";
-import { getT } from "@/lib/i18n-server";
+import { LangProvider } from "@/components/lang";
+import { isEnglishJob, makeT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
   const { code } = await params;
-  const [job, t] = await Promise.all([jobs.byCode(code), getT()]);
+  const job = await jobs.byCode(code);
+  const t = makeT(isEnglishJob(job?.language) ? "en" : "zh");
   return { title: job?.shopName || t("本週新品", "New this week"), description: job ? t(`${job.metrics.itemCount ?? ""} 件商品，留言代碼即可下單`, `${job.metrics.itemCount ?? ""} items — comment the code to order`) : undefined };
 }
 
-/** 可購買頁：公開、手機優先。下單＝複製「我要 代碼 品名」，再帶顧客去賣家的 IG、LINE 或簡訊 */
+/**
+ * 可購買頁：公開、手機優先。下單＝複製「我要 代碼 品名」，再帶顧客去賣家的 IG、LINE 或簡訊。
+ * 介面語言跟著這個掃描的產出語言走（品名、描述都是那個語言），所以這頁不放語言切換。
+ */
 export default async function ShopPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const [job, t] = await Promise.all([jobs.byCode(code), getT()]);
+  const job = await jobs.byCode(code);
   if (!job?._id) notFound();
+  const lang = isEnglishJob(job.language) ? "en" : "zh";
+  const t = makeT(lang);
   const shopTitle = job.shopName || t("本週新品", "New this week");
   const [list, ass] = await Promise.all([itemRepo.forJob(job._id), assetRepo.forJob(job._id)]);
   const byItem = new Map(ass.map((a) => [String(a.itemId), a]));
@@ -33,9 +39,9 @@ export default async function ShopPage({ params }: { params: Promise<{ code: str
     return { id: String(it._id), code: it.code, title: it.title, price: it.price, currency: it.currency, category: it.category, description: it.description, color: it.color, material: it.material, hero, shots, reelUrl: a?.reelUrl ?? null, caption: a?.caption ?? "" };
   });
   return (
-    <main className="mx-auto max-w-md px-4 pb-16 pt-8">
+    <LangProvider lang={lang}>
+    <main lang={lang === "en" ? "en" : "zh-Hant-TW"} className="mx-auto max-w-md px-4 pb-16 pt-8">
       <header className="relative text-center">
-        <LangToggle className="absolute right-0 top-0" />
         <div aria-hidden className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-orange-500 to-amber-400 text-2xl font-bold text-white">{Array.from(job.shopName || t("新", "N"))[0]}</div>
         <h1 className="mt-3 text-2xl font-bold">{shopTitle}</h1>
         <p className="mt-1 text-sm text-stone-500">{t(`${items.length} 件 · 點商品看詳情，留言代碼即可下單`, `${items.length} items · tap for details, comment the code to order`)}</p>
@@ -43,5 +49,6 @@ export default async function ShopPage({ params }: { params: Promise<{ code: str
       <ShopGrid items={items} shopName={shopTitle} shopUrl={shopUrl} qrDataUrl={qr} contact={{ instagram: job.contact?.instagram ?? "", line: job.contact?.line ?? "", phone: job.contact?.phone ?? "" }} />
       <p className="mt-10 text-center text-xs text-stone-400">Built with PanShop</p>
     </main>
+    </LangProvider>
   );
 }

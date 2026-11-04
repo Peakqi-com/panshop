@@ -63,7 +63,7 @@ export function ReviewTable({ data, onChange }: { data: JobPayload; onChange: ()
       </div>
 
       {editable && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-white p-2 text-xs ring-1 ring-stone-200">
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border-2 border-[var(--ink)] bg-white p-2 text-xs">
           <span className="text-stone-500">{sel.size ? t(`已選 ${sel.size} 件：`, `${sel.size} selected:`) : t("勾選商品可批次處理：", "Select items for bulk actions:")}</span>
           <button disabled={busy || sel.size < 2} onClick={merge} className="btn btn-ghost px-2 py-1 disabled:opacity-40">{t("合併成一件", "Merge into one")}</button>
           <span className="flex items-center gap-1">
@@ -92,15 +92,15 @@ export function ReviewTable({ data, onChange }: { data: JobPayload; onChange: ()
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-stone-500">
           <span>{t("已標記不賣：", "Removed:")}</span>
           {deleted.map((d) => (
-            <button key={d._id} onClick={async () => { await fetch(`/api/items/${d._id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ status: "draft" }) }); onChange(); }} className="rounded-full bg-white px-2.5 py-1 ring-1 ring-stone-200 hover:ring-stone-400">
+            <button key={d._id} onClick={async () => { await fetch(`/api/items/${d._id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ status: "draft" }) }); onChange(); }} className="rounded-full border-2 border-[var(--ink)] bg-white px-2.5 py-1 font-bold hover:bg-[var(--yellow)]">
               {d.code} {d.title} ↺
             </button>
           ))}
         </div>
       )}
       {editable && (
-        <div className="sticky bottom-4 mt-4 flex items-center justify-between gap-3 rounded-xl bg-stone-900 p-3 text-white shadow-lg">
-          <div className="text-sm"><span className="font-medium">{t(`${items.length} 件`, `${items.length} items`)}</span><span className="text-stone-400">{t(" 將建立目錄、可購買頁與短影片", " → catalog, shop page and a short video each")}</span></div>
+        <div className="sticky bottom-4 mt-4 flex items-center justify-between gap-3 rounded-xl border-[3px] border-[var(--ink)] bg-[var(--yellow)] p-3 font-bold shadow-[5px_5px_0_var(--ink)]">
+          <div className="text-sm"><span className="font-medium">{t(`${items.length} 件`, `${items.length} items`)}</span><span className="font-normal text-stone-700">{t(" 將建立目錄、可購買頁與短影片", " → catalog, shop page and a short video each")}</span></div>
           <button onClick={produce} disabled={busy || !items.length} className="btn btn-primary">{busy ? t("處理中…", "Working…") : t("建立目錄", "Build catalog")}</button>
         </div>
       )}

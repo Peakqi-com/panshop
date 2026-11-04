@@ -118,9 +118,9 @@ export function JobView({ code }: { code: string }) {
       <section className="card mt-6 p-4">
         <ol className="grid grid-cols-4 gap-2 sm:grid-cols-8">
           {stageList.map((s, i) => (
-            <li key={s.key} title={s.error ? stageError(s.error, t, data.isAdmin) : stageNote(s.note, t)} className={`relative rounded-lg px-2 py-2 text-xs ${s.status === "done" ? "bg-green-50 text-green-800" : s.status === "running" ? "bg-orange-50 text-orange-800 ring-1 ring-orange-300" : s.status === "failed" ? "bg-red-50 text-red-800" : "text-stone-400"}`}>
+            <li key={s.key} title={s.error ? stageError(s.error, t, data.isAdmin) : stageNote(s.note, t)} className={`relative rounded-lg border-2 px-2 py-2 text-xs font-bold ${s.status === "done" ? "border-[var(--ink)] bg-[var(--teal)] text-[var(--ink)]" : s.status === "running" ? "border-[var(--ink)] bg-[var(--yellow)] text-[var(--ink)] shadow-[2px_2px_0_var(--ink)]" : s.status === "failed" ? "border-[var(--ink)] bg-[var(--pink)] text-[var(--ink)]" : "border-dashed border-stone-300 text-stone-400"}`}>
               <div className="flex items-center gap-1 font-medium">
-                <span className={`grid h-4 w-4 place-items-center rounded-full text-[10px] ${s.status === "done" ? "bg-green-600 text-white" : s.status === "running" ? "animate-pulse bg-orange-500 text-white" : s.status === "failed" ? "bg-red-600 text-white" : "bg-stone-200 text-stone-500"}`}>{s.status === "done" ? "✓" : i + 1}</span>
+                <span className={`grid h-4 w-4 place-items-center rounded-full text-[10px] ${s.status === "done" ? "bg-[var(--ink)] text-white" : s.status === "running" ? "animate-pulse bg-[var(--accent)] text-[var(--ink)]" : s.status === "failed" ? "bg-[var(--ink)] text-white" : "bg-stone-200 text-stone-500"}`}>{s.status === "done" ? "✓" : i + 1}</span>
                 {s.label}
               </div>
               <div className="mt-0.5 truncate">{s.status === "done" ? (s.ms ? `${(s.ms / 1000).toFixed(0)}${t(" 秒", "s")}` : t("完成", "Done")) : s.status === "running" ? t("進行中…", "Running…") : s.status === "failed" ? t("失敗", "Failed") : ""}</div>
@@ -154,14 +154,14 @@ export function JobView({ code }: { code: string }) {
           {job.categories.length > 0 && (
             <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
               <span className="text-stone-500">{t("找到品類：", "Categories found:")}</span>
-              {job.categories.map((c) => <span key={c.name} className="rounded-full bg-white px-3 py-1 ring-1 ring-stone-200">{c.name} <span className="text-stone-400">{t(`約 ${c.estimatedCount} 件`, `~${c.estimatedCount}`)}</span></span>)}
+              {job.categories.map((c) => <span key={c.name} className="rounded-full border-2 border-[var(--ink)] bg-white px-3 py-1 font-bold">{c.name} <span className="text-stone-400">{t(`約 ${c.estimatedCount} 件`, `~${c.estimatedCount}`)}</span></span>)}
             </div>
           )}
           {job.metrics.trackCount != null && <p className="mt-2 text-sm text-stone-500">{t(`追蹤到 ${job.metrics.trackCount} 段影像`, `${job.metrics.trackCount} tracks found`)}{job.metrics.itemCount != null ? t(`，去重後 ${job.metrics.itemCount} 件`, `, ${job.metrics.itemCount} items after de-duplication`) : t("，正在去重…", ", de-duplicating…")}</p>}
         </section>
       )}
 
-      {!data.canEdit && <p className="mt-4 rounded-lg bg-stone-100 px-4 py-2 text-sm text-stone-600">{t("這是唯讀檢視。只有建立這個掃描的瀏覽器可以修改；想試試看，請回首頁上傳你自己的影片或照片。", "Read-only view. Only the browser that created this scan can edit it. To try it yourself, upload your own video or photos from the home page.")}</p>}
+      {!data.canEdit && <p className="mt-4 rounded-lg border-2 border-[var(--ink)] bg-[var(--yellow)] px-4 py-2 text-sm font-bold">{t("這是唯讀檢視。只有建立這個掃描的瀏覽器可以修改；想試試看，請回首頁上傳你自己的影片或照片。", "Read-only view. Only the browser that created this scan can edit it. To try it yourself, upload your own video or photos from the home page.")}</p>}
       {/* 產出完成：成品放最前面，分析過程收合 */}
       {["producing", "done"].includes(job.status) && <Outputs data={{ ...data, items: data.items.filter((i) => i.status !== "deleted") }} onChange={load} />}
       {inReview && (job.status === "review" ? (
@@ -171,7 +171,7 @@ export function JobView({ code }: { code: string }) {
           <ReviewTable data={data} onChange={load} />
         </>
       ) : (
-        <details className="mt-10 rounded-xl bg-white p-4 ring-1 ring-stone-200">
+        <details className="card mt-10 p-4">
           <summary className="cursor-pointer font-semibold">{t("分析過程：切出的商品、時間軸、確認表", "How it was analyzed: cut-out items, timeline, review table")}</summary>
           <BurstGrid items={data.items.filter((i) => i.status !== "deleted")} assets={data.assets} animate={false} />
           <Timeline job={job} tracks={data.tracks} items={data.items.filter((i) => i.status !== "deleted")} />
@@ -183,7 +183,7 @@ export function JobView({ code }: { code: string }) {
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-lg bg-white px-3 py-1.5 ring-1 ring-stone-200"><span className="text-xs text-stone-500">{label} </span><span className="font-medium">{value}</span></div>;
+  return <div className="rounded-lg border-2 border-[var(--ink)] bg-white px-3 py-1.5 shadow-[2px_2px_0_var(--ink)]"><span className="text-xs text-stone-500">{label} </span><span className="font-black">{value}</span></div>;
 }
 
 function RetryButton({ jobId, stage, onDone }: { jobId: string; stage: Stage; onDone: () => void }) {

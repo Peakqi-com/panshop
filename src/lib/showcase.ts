@@ -3,7 +3,7 @@ import { items } from "@/repositories/items";
 import { assets } from "@/repositories/assets";
 
 /** 首頁展示用：正式站已跑完的真實掃描。/admin 設了 featuredJobCode 就用它，否則用下面的預設掃描。 */
-export const SHOWCASE_DEFAULT = { zh: "2edauk4btx", en: "r8vfcdf3um" } as const;
+export const SHOWCASE_DEFAULT = { zh: "2edauk4btx", en: "3xb2exfjum" } as const;
 
 export type ShowItem = {
   code: string;

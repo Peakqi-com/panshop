@@ -27,7 +27,7 @@ function PhotoStrip({ job, tracks, items }: { job: JobPayload["job"]; tracks: Tr
           return (
             <div key={f.url} className="card overflow-hidden">
               <img src={f.url} alt="" className="aspect-[4/3] w-full object-cover" />
-              <div className="flex flex-wrap gap-1 p-2 text-xs">{here.length ? here.map((it) => <span key={it._id} className="rounded-full bg-orange-100 px-2 py-0.5 font-mono text-orange-800">{it.code}</span>) : <span className="text-stone-400">{t("沒有切到商品", "No items found")}</span>}</div>
+              <div className="flex flex-wrap gap-1 p-2 text-xs">{here.length ? here.map((it) => <span key={it._id} className="rounded-full border-2 border-[var(--ink)] bg-[var(--yellow)] px-2 py-0.5 font-mono font-bold">{it.code}</span>) : <span className="text-stone-400">{t("沒有切到商品", "No items found")}</span>}</div>
             </div>
           );
         })}
@@ -68,7 +68,7 @@ function VideoTimeline({ job, tracks, items }: { job: JobPayload["job"]; tracks:
         <p className="text-sm text-stone-500">{tr_("拖動影片，看每件商品在鏡頭內的秒數。", "Scrub the video to see when each item is on screen. ")}{multi > 0 && <span className="text-orange-700">{tr_(`${multi} 件出鏡又入鏡，仍只算一件。`, `${multi} left the frame and came back — still counted once.`)}</span>}</p>
       </div>
       <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_360px]">
-        <div className="relative overflow-hidden rounded-xl bg-black">
+        <div className="relative overflow-hidden rounded-xl border-[3px] border-[var(--ink)] bg-black">
           <video ref={video} src={job.video.fps4Url ?? job.video.originalUrl ?? undefined} controls playsInline preload="metadata" className="w-full" />
           <div className="pointer-events-none absolute inset-0">
             {live.map((tr) => {

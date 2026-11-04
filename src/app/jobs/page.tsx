@@ -22,7 +22,7 @@ export default async function JobsPage() {
               <div className="truncate font-medium">{j.shopName || t("未命名", "Untitled")} <span className="ml-1 font-mono text-xs text-stone-400">{j.code}</span></div>
               <div className="text-xs text-stone-500">{fmtTimeL(j.createdAt, lang)}{j.video.durationSec ? ` · ${Math.round(j.video.durationSec)}${t(" 秒", "s")}` : ""}{j.metrics.itemCount != null ? ` · ${j.metrics.itemCount}${t(" 件", " items")}` : ""}</div>
             </div>
-            <span className={`rounded-full px-2.5 py-1 text-xs ${j.status === "done" ? "bg-green-100 text-green-800" : j.status === "failed" ? "bg-red-100 text-red-700" : j.status === "review" ? "bg-orange-100 text-orange-800" : "bg-stone-100 text-stone-600"}`}>{JOB_STATUS[j.status] ? t(...JOB_STATUS[j.status]) : j.status}</span>
+            <span className={`rounded-full border-2 border-[var(--ink)] px-2.5 py-1 text-xs font-bold ${j.status === "done" ? "bg-[var(--teal)]" : j.status === "failed" ? "bg-[var(--pink)]" : j.status === "review" ? "bg-[var(--yellow)]" : "bg-white"}`}>{JOB_STATUS[j.status] ? t(...JOB_STATUS[j.status]) : j.status}</span>
           </Link>
         ))}
       </div>

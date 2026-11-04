@@ -28,6 +28,15 @@ Single-item listing tools in marketplace and resale apps handle one product per 
 
 **Live demo:** https://panshop-meta-hackathon.vercel.app
 
+**Try it in 60 seconds** (no sign-up, English by default):
+
+| Look at | Link |
+|---|---|
+| The whole flow as a five-step scroll story, then real outputs and a comment box you can type orders into | [Home page](https://panshop-meta-hackathon.vercel.app) |
+| A finished scan: 20-second pan with the seller speaking English, 3 items, US prices, photos, catalog CSV and videos | [Scan 3xb2exfjum](https://panshop-meta-hackathon.vercel.app/jobs/3xb2exfjum) |
+| What shoppers see | [Shop page](https://panshop-meta-hackathon.vercel.app/s/3xb2exfjum) |
+| Run your own: upload a video or photos, or press “Try the sample” | [New scan](https://panshop-meta-hackathon.vercel.app/new) |
+
 1. **Pan, import or replay**: film one slow pan across your products and say names and prices as you go, drop in a stack of product photos, or upload a live-stream replay. All three entry points share one pipeline.
 2. **Segment and deduplicate**: SAM 3.1 finds every product, tracks it across frames and keeps one record per physical item, even when it leaves and re-enters the frame. Photos go through SAM's image mode, one call per photo.
 3. **Identify**: Muse Spark reads the best crops of each item and what you said during the pan, transcribed by Muse Voice Transcribe, to produce title, attributes, category, price and description.
@@ -39,13 +48,15 @@ Single-item listing tools in marketplace and resale apps handle one product per 
 
 ## Meta models used
 
-| Model | Role |
-|---|---|
-| SAM 3.1 (`sam-3.1`) | Concept-prompted video segmentation and cross-frame tracking of every product; per-item best-angle crops and mask cutouts |
-| Muse Spark 1.3 (`muse-spark-1.3`) | Category discovery, crop matching for deduplication, product attributes, copy, visual briefs, image QA, video storyboards |
-| Muse Voice Transcribe (`muse-voice-transcribe-1.0`) | Spoken product names and prices with turn-level timestamps |
-| Muse Image (`muse-image-1.0`) | Studio angles, lifestyle shots and 9:16 storyboard scenes, all referenced on the item's own crops |
-| Muse Spark Open (open weights, hosted on Baseten) | Shopper questions in live and post comments: intent, matching product code and a reply draft. Order comments like “A3+1” are parsed by rules first. *Built with Muse Spark Open.* |
+| Model | Role | Where in the code |
+|---|---|---|
+| SAM 3.1 (`sam-3.1`) | Concept-prompted video segmentation and cross-frame tracking of every product; per-item best-angle crops and mask cutouts | [`stages/segment.ts`](src/lib/pipeline/stages/segment.ts), [`sam-parser.ts`](src/lib/sam-parser.ts) |
+| Muse Spark 1.3 (`muse-spark-1.3`) | Category discovery, crop matching for deduplication, product attributes, copy, visual briefs, image QA, video storyboards | [`discover.ts`](src/lib/pipeline/stages/discover.ts), [`dedup.ts`](src/lib/pipeline/stages/dedup.ts), [`identify.ts`](src/lib/pipeline/stages/identify.ts), [`shoot.ts`](src/lib/pipeline/stages/shoot.ts), [`video/storyboard.ts`](src/lib/video/storyboard.ts) |
+| Muse Voice Transcribe (`muse-voice-transcribe-1.0`) | Spoken product names and prices with turn-level timestamps | [`stages/transcribe.ts`](src/lib/pipeline/stages/transcribe.ts) |
+| Muse Image (`muse-image-1.0`) | Studio angles, lifestyle shots and 9:16 storyboard scenes, all referenced on the item's own crops | [`stages/shoot.ts`](src/lib/pipeline/stages/shoot.ts), [`video/storyboard.ts`](src/lib/video/storyboard.ts) |
+| Muse Spark Open (open weights, hosted on Baseten) | Shopper questions in live and post comments: intent, matching product code and a reply draft. Order comments like “A3+1” are parsed by rules first ([`order-parse.ts`](src/lib/order-parse.ts)). *Built with Muse Spark Open.* | [`baseten.ts`](src/lib/baseten.ts), [`api/comments/route.ts`](src/app/api/comments/route.ts) |
+
+All model calls go through [`src/lib/meta.ts`](src/lib/meta.ts) and [`src/lib/baseten.ts`](src/lib/baseten.ts).
 
 Every model in the pipeline is a Meta model. The Model API has no text-to-speech model, so videos do not use synthetic narration: Muse Voice Transcribe timestamps the seller's own words about each product, and the renderer cuts that sentence from the original audio into the hero scene. When the seller didn't speak about an item, or the speech language doesn't match the video language, the video carries captions and music only.
 

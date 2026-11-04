@@ -7,6 +7,7 @@ import { checkUploadPasscode, isAdmin } from "@/lib/auth";
 import { issueEditToken } from "@/lib/owner";
 import { STYLES, DEFAULT_STYLE } from "@/lib/config";
 import { settings } from "@/repositories/settings";
+import { getLang } from "@/lib/i18n-server";
 import { checkTrial, clientIpHash } from "@/lib/trial";
 import { jobLanguage, makeT, defaultCurrency, type Lang } from "@/lib/i18n";
 
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "參數不對 / Invalid request" }, { status: 400 });
   const b = parsed.data;
-  const lang: Lang = b.lang ?? "zh";
+  const lang: Lang = b.lang ?? (await getLang());
   const t = makeT(lang);
   if (!checkUploadPasscode(b.passcode)) return Response.json({ error: t("通行碼不對", "Wrong passcode") }, { status: 403 });
   const limited = await checkTrial(lang);

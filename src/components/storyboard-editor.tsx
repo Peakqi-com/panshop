@@ -120,7 +120,7 @@ export function StoryboardEditor({ item: it, asset: a, onChange, onClose }: { it
             {a?.reelUrl ? <video key={a.reelUrl} src={a.reelUrl} poster={a.coverUrl} controls playsInline className="aspect-[9/16] w-full object-cover" /> : <div className="aspect-[9/16] w-full bg-stone-800" />}
           </div>
           <p className="text-xs text-stone-500">{en
-            ? `Current video above. Voice: ${VOICE_LABEL_EN[initial?.voice ?? ""] ?? "not rendered yet"}. Last music: ${initial?.musicLabel ?? "not rendered yet"}.`
+            ? `Current video above. Voice: ${VOICE_LABEL_EN[initial?.voice ?? ""] ?? "not rendered yet"}. Last music: ${({ 程式合成: "generated in code", 無: "none" } as Record<string, string>)[initial?.musicLabel ?? ""] ?? initial?.musicLabel ?? "not rendered yet"}.`
             : <>上方是目前的成品。配音：{VOICE_LABEL[initial?.voice ?? ""] ?? "尚未合成"}。上次音樂：{initial?.musicLabel ?? "尚未合成"}。</>}</p>
           <div className="card space-y-3 p-3 text-sm">
             <label className="block font-medium">{t("開場大標", "Opening headline")}<input value={hook} maxLength={40} onChange={(e) => { setHook(e.target.value); setDirty(true); }} className="input mt-1 font-normal" /></label>

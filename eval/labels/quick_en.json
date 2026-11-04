@@ -1,0 +1,27 @@
+{
+  "video": "eval/footage/quick_en.mp4",
+  "durationSec": 19.6,
+  "items": [
+    {
+      "code": "A1",
+      "category": "mug",
+      "phrase": "mug",
+      "title": "matte white ceramic mug",
+      "price": 12
+    },
+    {
+      "code": "B1",
+      "category": "book",
+      "phrase": "book",
+      "title": "green hardcover notebook",
+      "price": 9.5
+    },
+    {
+      "code": "C2",
+      "category": "sneaker",
+      "phrase": "sneaker",
+      "title": "red running shoe",
+      "price": 64
+    }
+  ]
+}
