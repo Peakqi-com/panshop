@@ -30,8 +30,9 @@ export default async function AdminHome() {
           {s.byDay.length === 0 ? <p className="mt-3 text-sm text-stone-500">還沒有資料</p> : (
             <div className="mt-3 flex h-32 items-end gap-1">
               {s.byDay.map((d) => (
-                <div key={d._id} className="flex flex-1 flex-col items-center gap-1" title={`${d._id}：${d.jobs} 件，$${d.cost.toFixed(2)}`}>
-                  <div className="w-full rounded-t bg-orange-400" style={{ height: `${Math.max(4, (d.cost / maxCost) * 100)}%` }} />
+                <div key={d._id} className="flex h-full flex-1 flex-col items-center justify-end gap-1" title={`${d._id}：${d.jobs} 個掃描，$${d.cost.toFixed(2)}`}>
+                  <span className="text-[10px] text-stone-500">${d.cost.toFixed(2)}</span>
+                  <div className="w-full max-w-10 rounded-t bg-orange-400" style={{ height: `${Math.max(4, (d.cost / maxCost) * 80)}%` }} />
                   <span className="text-[10px] text-stone-400">{d._id.slice(3)}</span>
                 </div>
               ))}

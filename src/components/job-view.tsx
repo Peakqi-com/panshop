@@ -17,7 +17,10 @@ export type JobPayload = {
     stages: Partial<Record<Stage, { status: string; ms?: number; error?: string; note?: string; startedAt?: string }>>;
     metrics: { trackCount?: number; itemCount?: number; costUsd?: number; samFrames?: number };
     catalogCsvUrl?: string;
+    contact?: { instagram: string; line: string; phone: string };
   };
+  canEdit: boolean;
+  isAdmin: boolean;
   items: ItemRow[];
   tracks: TrackRow[];
   assets: AssetRow[];
@@ -128,7 +131,7 @@ export function JobView({ code }: { code: string }) {
           <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             <div className="font-medium">{current ? `${current.label} 失敗` : "處理失敗"}</div>
             <div className="mt-1 break-all text-xs">{current?.error}</div>
-            <RetryButton jobId={job._id} stage={current?.key ?? "extract"} onDone={load} />
+            {data.isAdmin ? <RetryButton jobId={job._id} stage={current?.key ?? "extract"} onDone={load} /> : <p className="mt-2 text-xs">我們會收到這次失敗的紀錄。你也可以換一段影片重新上傳。</p>}
           </div>
         )}
       </section>
@@ -153,14 +156,23 @@ export function JobView({ code }: { code: string }) {
         </section>
       )}
 
-      {inReview && (
+      {!data.canEdit && <p className="mt-4 rounded-lg bg-stone-100 px-4 py-2 text-sm text-stone-600">這是唯讀檢視。只有建立這個掃描的瀏覽器可以修改；想試試看，請回首頁上傳你自己的影片或照片。</p>}
+      {/* 產出完成：成品放最前面，分析過程收合 */}
+      {["producing", "done"].includes(job.status) && <Outputs data={{ ...data, items: data.items.filter((i) => i.status !== "deleted") }} onChange={load} />}
+      {inReview && (job.status === "review" ? (
         <>
-          <BurstGrid key={burstKey} items={data.items.filter((i) => i.status !== "deleted")} animate={burstKey > 0} />
+          <BurstGrid key={burstKey} items={data.items.filter((i) => i.status !== "deleted")} assets={data.assets} animate={burstKey > 0} />
           <Timeline job={job} tracks={data.tracks} items={data.items.filter((i) => i.status !== "deleted")} />
           <ReviewTable data={data} onChange={load} />
         </>
-      )}
-      {["producing", "done"].includes(job.status) && <Outputs data={{ ...data, items: data.items.filter((i) => i.status !== "deleted") }} onChange={load} />}
+      ) : (
+        <details className="mt-10 rounded-xl bg-white p-4 ring-1 ring-stone-200">
+          <summary className="cursor-pointer font-semibold">分析過程：切出的商品、時間軸、確認表</summary>
+          <BurstGrid items={data.items.filter((i) => i.status !== "deleted")} assets={data.assets} animate={false} />
+          <Timeline job={job} tracks={data.tracks} items={data.items.filter((i) => i.status !== "deleted")} />
+          <ReviewTable data={data} onChange={load} />
+        </details>
+      ))}
     </main>
   );
 }
@@ -183,7 +195,8 @@ function RetryButton({ jobId, stage, onDone }: { jobId: string; stage: Stage; on
 }
 
 /** 驚艷 1：影片處理完，商品卡從中央炸開 */
-function BurstGrid({ items, animate }: { items: ItemRow[]; animate: boolean }) {
+function BurstGrid({ items, assets, animate }: { items: ItemRow[]; assets: AssetRow[]; animate: boolean }) {
+  const shotOf = (id: string) => { const a = assets.find((x) => x.itemId === id); return a?.shots?.find((s) => s.kind === "threeQuarter")?.url ?? a?.shots?.[0]?.url; };
   return (
     <section className="mt-6">
       <div className="flex items-baseline justify-between">
@@ -196,7 +209,7 @@ function BurstGrid({ items, animate }: { items: ItemRow[]; animate: boolean }) {
           const dx = `${(cols / 2 - c - 0.5) * 120}px`, dy = `${(1 - r) * 160}px`;
           return (
             <div key={it._id} className={`card overflow-hidden ${animate ? "burst" : ""}`} style={{ animationDelay: `${i * 60}ms`, ["--dx" as string]: dx, ["--dy" as string]: dy } as React.CSSProperties}>
-              <div className="aspect-square bg-white"><img src={it.primaryCutoutUrl ?? it.primaryCropUrls[0]} alt="" className="h-full w-full object-contain" /></div>
+              <div className="aspect-square bg-white"><img src={it.heroUrl ?? shotOf(it._id) ?? it.primaryCutoutUrl ?? it.primaryCropUrls[0]} alt={it.title} className="h-full w-full object-contain" /></div>
               <div className="px-2 py-1.5">
                 <div className="flex items-baseline justify-between"><span className="font-mono text-[10px] text-stone-400">{it.code}</span><span className="text-xs font-medium">{it.price != null ? `$${it.price}` : ""}</span></div>
                 <div className="truncate text-xs">{it.title || it.category}</div>

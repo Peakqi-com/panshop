@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { checkAdminPasscode, grantAdmin, isAdmin } from "@/lib/auth";
-import { setSetting, SETTING_KEYS, type SettingKey, getSetting } from "@/lib/settings";
+import { setSetting, clearSetting, SETTING_KEYS, type SettingKey, getSetting } from "@/lib/settings";
 import { settings } from "@/repositories/settings";
 import { jobs } from "@/repositories/jobs";
 import { triggerStage } from "@/lib/pipeline";
@@ -37,6 +37,19 @@ export async function saveSettingAction(_: unknown, formData: FormData) {
   return { ok: true, key };
 }
 
+export async function clearSettingAction(key: string) {
+  await guard();
+  if (!(key in SETTING_KEYS)) throw new Error("未知的設定");
+  await clearSetting(key as SettingKey);
+  revalidatePath("/admin/settings");
+}
+
+export async function logoutAction() {
+  const { cookies } = await import("next/headers");
+  (await cookies()).delete("panshop_admin");
+  redirect("/admin");
+}
+
 export async function saveAppSettingsAction(_: unknown, formData: FormData) {
   await guard();
   try {
@@ -49,6 +62,7 @@ export async function saveAppSettingsAction(_: unknown, formData: FormData) {
       sampleVideoUrl: String(formData.get("sampleVideoUrl") ?? "").trim(),
       siteName: String(formData.get("siteName") ?? "PanShop").trim() || "PanShop",
       announcement: String(formData.get("announcement") ?? "").trim(),
+      featuredJobCode: String(formData.get("featuredJobCode") ?? "").trim(),
       commentModel: (String(formData.get("commentModel")) === "spark" ? "spark" : "spark-open"),
       voiceMode: (["tts", "seller", "none"].includes(String(formData.get("voiceMode"))) ? String(formData.get("voiceMode")) : "tts") as "tts" | "seller" | "none",
     });
@@ -135,6 +149,13 @@ export async function runHealthAction(): Promise<HealthRow[]> {
   await timed("Vercel Blob", async () => { const { list } = await import("@vercel/blob"); const r = await list({ limit: 1 }); return r.blobs.length ? `可讀取（${r.blobs[0].pathname}）` : "可讀取（空）"; });
   await timed("Meta Model API（Muse Spark）", async () => { const key = await getSetting("META_API_KEY"); if (!key) throw new Error("未設定金鑰"); const r = await sparkText({ parts: [{ text: "回覆 OK" }], effort: "minimal", maxTokens: 20 }); return `回覆「${r.text.trim().slice(0, 20)}」，$${r.usd.toFixed(5)}`; });
   await timed("Baseten（Muse Spark Open）", async () => { const key = await getSetting("BASETEN_API_KEY"); if (!key) throw new Error("未設定金鑰"); const r = await sparkOpenChat({ user: "回覆 OK", maxTokens: 200 }); return `${r.model}，回覆「${r.text.trim().slice(0, 20)}」`; });
+  await timed("配音（Fish Audio 或 OpenAI）", async () => {
+    const { synthesize } = await import("@/lib/video/tts");
+    const r = await synthesize("測試");
+    if (!r) throw new Error("沒有可用的配音金鑰，短片會退回賣家原聲");
+    return `${r.provider} ${r.model}，${Math.round(r.audio.length / 1024)} KB`;
+  });
+  await timed("音樂曲庫", async () => { const n = (await music.active()).length; return n ? `${n} 首啟用中` : "沒有曲目，短片用程式合成音樂"; });
   await timed("ffmpeg", async () => { const { ffmpegPath, run } = await import("@/lib/ffmpeg"); const r = await run(["-version"]); return `${ffmpegPath().includes("ffmpeg-static") ? "ffmpeg-static" : "系統 ffmpeg"} ${r.stdout.split("\n")[0].slice(0, 40)}`; });
   return rows;
 }

@@ -12,7 +12,9 @@ export type ShopItem = {
 const KIND_LABEL: Record<string, string> = { front: "正面", threeQuarter: "四十五度", side: "側面", lifestyle: "情境" };
 
 /** 可購買頁：品類分頁、商品詳情（多圖、短片、描述）、留言下單與分享 */
-export function ShopGrid({ items, shopName, shopUrl, qrDataUrl }: { items: ShopItem[]; shopName: string; shopUrl: string; qrDataUrl: string }) {
+export type ShopContact = { instagram: string; line: string; phone: string };
+
+export function ShopGrid({ items, shopName, shopUrl, qrDataUrl, contact }: { items: ShopItem[]; shopName: string; shopUrl: string; qrDataUrl: string; contact: ShopContact }) {
   const cats = useMemo(() => Array.from(new Set(items.map((i) => i.category))), [items]);
   const [cat, setCat] = useState<string>("全部");
   const [open, setOpen] = useState<ShopItem | null>(null);
@@ -51,7 +53,7 @@ export function ShopGrid({ items, shopName, shopUrl, qrDataUrl }: { items: ShopI
         ))}
       </div>
 
-      {open && <Detail item={open} shopName={shopName} onClose={() => setOpen(null)} say={say} />}
+      {open && <Detail item={open} shopName={shopName} contact={contact} onClose={() => setOpen(null)} say={say} />}
 
       {share && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center" onClick={() => setShare(false)}>
@@ -71,7 +73,7 @@ export function ShopGrid({ items, shopName, shopUrl, qrDataUrl }: { items: ShopI
   );
 }
 
-function Detail({ item: it, shopName, onClose, say }: { item: ShopItem; shopName: string; onClose: () => void; say: (m: string) => void }) {
+function Detail({ item: it, shopName, contact, onClose, say }: { item: ShopItem; shopName: string; contact: ShopContact; onClose: () => void; say: (m: string) => void }) {
   const [lb, setLb] = useState<number | null>(null);
   const images: LightboxImage[] = it.shots.map((s) => ({ url: s.url, label: KIND_LABEL[s.kind] ?? s.label, kind: s.kind }));
   if (!images.length && it.hero) images.push({ url: it.hero, label: it.title });
@@ -96,12 +98,36 @@ function Detail({ item: it, shopName, onClose, say }: { item: ShopItem; shopName
           {(it.color || it.material) && <p className="mt-1 text-sm text-stone-500">{[it.color, it.material].filter(Boolean).join(" · ")}</p>}
           {it.description && <p className="mt-3 text-sm leading-relaxed text-stone-700">{it.description}</p>}
           {it.reelUrl && <video src={it.reelUrl} controls playsInline className="mt-4 aspect-[9/16] w-full rounded-xl bg-black" />}
-          <div className="sticky bottom-0 mt-4 flex gap-2 bg-[var(--bg)] py-3">
-            <button onClick={async () => say((await copyText(order)) ? `已複製「${order}」，貼到留言或私訊即可` : "複製失敗")} className="btn btn-primary flex-1 py-3">留言下單</button>
-            <a href={`sms:?body=${encodeURIComponent(`${shopName}：${order}`)}`} className="btn btn-ghost py-3">傳訊息</a>
-          </div>
+          <OrderBar order={order} shopName={shopName} contact={contact} say={say} />
         </div>
       </div>
+    </div>
+  );
+}
+
+/** 下單：先複製「我要 代碼 品名」，再開賣家設定的管道；都沒設定就只複製 */
+function OrderBar({ order, shopName, contact, say }: { order: string; shopName: string; contact: ShopContact; say: (m: string) => void }) {
+  const text = `${shopName}：${order}`;
+  const links = [
+    contact.instagram && { label: "Instagram 私訊", href: `https://ig.me/m/${encodeURIComponent(contact.instagram)}` },
+    contact.line && { label: "LINE", href: `https://line.me/R/ti/p/${encodeURIComponent(contact.line.startsWith("@") ? contact.line : `@${contact.line}`)}` },
+    contact.phone && { label: "簡訊", href: `sms:${contact.phone.replace(/[\s-]/g, "")}?body=${encodeURIComponent(text)}` },
+  ].filter(Boolean) as { label: string; href: string }[];
+  async function go(href?: string) {
+    const ok = await copyText(order);
+    if (href) { say(ok ? `已複製「${order}」，貼上送出即可` : "請手動輸入商品代碼"); window.open(href, "_blank", "noopener"); }
+    else say(ok ? `已複製「${order}」，貼到賣家貼文留言即可` : "複製失敗");
+  }
+  return (
+    <div className="sticky bottom-0 mt-4 bg-[var(--bg)] py-3">
+      {links.length ? (
+        <div className="flex flex-wrap gap-2">
+          {links.map((l, i) => <button key={l.label} onClick={() => go(l.href)} className={`btn flex-1 py-3 ${i === 0 ? "btn-primary" : "btn-ghost"}`}>{i === 0 ? `下單：${l.label}` : l.label}</button>)}
+        </div>
+      ) : (
+        <button onClick={() => go()} className="btn btn-primary w-full py-3">複製下單文字</button>
+      )}
+      <p className="mt-2 text-center text-xs text-stone-500">會先複製「{order}」，送出就完成下單。</p>
     </div>
   );
 }

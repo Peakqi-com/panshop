@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { isAdmin } from "@/lib/auth";
 import { LoginForm } from "./forms";
+import { logoutAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Link key={href} href={href} className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-stone-700 hover:bg-white hover:shadow-sm">{label}</Link>
           ))}
         </nav>
+        <form action={logoutAction} className="mt-4 px-2"><button className="text-xs text-stone-500 hover:underline">登出</button></form>
       </aside>
       <main className="min-w-0">{children}</main>
     </div>

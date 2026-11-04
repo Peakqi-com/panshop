@@ -15,9 +15,10 @@ import type { Item } from "@/models/item";
 import type { Asset } from "@/models/asset";
 import { renderAd } from "@/lib/video/ad";
 import { renderAdV2, type SceneSpec } from "@/lib/video/ad2";
-import { writeStoryboard, ensureSceneImages } from "@/lib/video/storyboard";
+import { writeStoryboard, ensureSceneImages, rewriteSceneText } from "@/lib/video/storyboard";
 import { synthesize, stripDirection } from "@/lib/video/tts";
 import { resolveMusic } from "@/lib/video/pick-music";
+import { pickSentence, hasChinesePrice, chineseDigitsToArabic } from "@/lib/video/price-text";
 import { settings } from "@/repositories/settings";
 import { STYLES, type StyleId } from "@/lib/config";
 
@@ -102,9 +103,26 @@ export async function renderItem(job: Job, it: Item, a: Asset, spans: readonly (
     if (!sb) {
       const w = await writeStoryboard(job, it, a); usd += w.usd;
       const { scenes, usd: u2 } = await ensureSceneImages(job, it, a, w.sb, log); usd += u2;
-      sb = { hook: w.sb.hook, cta: w.sb.cta || `留言 ${it.code} 取得連結`, scenes };
+      sb = { hook: w.sb.hook, cta: w.sb.cta || `留言 ${it.code} 取得連結`, scenes, price: it.price };
       await assetRepo.upsert(it._id!, job._id!, { storyboard: sb, hook: a.hook || w.sb.hook });
     }
+
+    // 1b. 改過價格：提到舊價格的旁白和結尾場重寫，畫面上的價格本來就讀商品資料
+    if (sb.price !== undefined && sb.price !== it.price) {
+      const old = sb.price;
+      const mentions = (t: string) => old != null && (t.includes(String(old)) || t.includes(old.toLocaleString()) || chineseDigitsToArabic(t).includes(String(old)) || hasChinesePrice(t, old));
+      const scenes = [...sb.scenes];
+      for (const [i, sc] of scenes.entries()) {
+        if (!(sc.overlay === "price" || sc.overlay === "cta" || mentions(sc.narration) || mentions(sc.subtitle))) continue;
+        try {
+          const r = await rewriteSceneText(job, it, a, { ...sb, scenes }, sc.sceneNo, `價格已改為 ${it.price != null ? `${job.currency} ${it.price}` : "未定，請說價格請私訊"}，旁白與字幕要用新價格`);
+          usd += r.usd; scenes[i] = { ...sc, narration: r.data.narration, subtitle: r.data.subtitle };
+        } catch (e) { log(`${it.code} 第 ${sc.sceneNo} 場價格旁白重寫失敗：${(e as Error).message.slice(0, 80)}`); }
+      }
+      sb = { ...sb, scenes, price: it.price };
+      await assetRepo.upsert(it._id!, job._id!, { storyboard: sb });
+      log(`${it.code} 價格改為 ${it.price}，已更新旁白`);
+    } else if (sb.price === undefined) sb = { ...sb, price: it.price };
 
     // 2. 配音：專業 TTS（Fish 優先、OpenAI 備援）→ 賣家原聲 → 無
     const voice = await prepareVoice(job, it, sb.scenes, spans, cfg.voiceMode, dir, log);
@@ -173,7 +191,7 @@ async function prepareVoice(job: Job, it: Item, scenes: { narration: string }[],
     const turns = job.transcript.filter((tu) => spans.some(([s, e]) => tu.startSec < e + 1.5 && s - 1.5 < tu.endSec));
     const turn = turns.find((t) => t.prices.length) ?? turns[0];
     if (turn) {
-      const seg = pickSentence(turn.text, it, job.currency);
+      const seg = pickSentence(turn.text, it);
       const turnDur = Math.max(0.5, turn.endSec - turn.startSec);
       const start = Math.max(0, turn.startSec + turnDur * seg.from - 0.15);
       const dur = Math.min(8, Math.max(1, turnDur * (seg.to - seg.from) + 0.35));
@@ -209,34 +227,6 @@ async function renderItemV1(job: Job, it: Item, a: Asset, spans: readonly (reado
   const [reelUrl, coverUrl] = await Promise.all([putFile(`jobs/${job.code}/items/${stamp}/${it.code}/ad.mp4`, r.mp4), putFile(`jobs/${job.code}/items/${stamp}/${it.code}/cover.png`, r.cover)]);
   await assetRepo.upsert(it._id!, job._id!, { reelUrl, coverUrl, reelDurationSec: r.durationSec, status: "done" });
   return { ok: true as const, reelUrl, coverUrl };
-}
-
-/** 從一段口述裡挑出講這件商品的句子，回傳句子文字與它在整段中的字元比例區間 */
-function pickSentence(text: string, it: Item, currency: string): { text: string; from: number; to: number } {
-  const parts: { text: string; from: number; to: number }[] = [];
-  let pos = 0;
-  for (const m of text.split(/(?<=[。！？!?；;])/)) { if (m.trim()) parts.push({ text: m.trim(), from: pos / text.length, to: (pos + m.length) / text.length }); pos += m.length; }
-  if (parts.length <= 1) return { text, from: 0, to: 1 };
-  const keys = [it.title, it.color, it.material, it.category].filter(Boolean).flatMap((k) => k.split(/[\s，、]/)).filter((k) => k.length >= 2);
-  const price = it.price != null ? String(it.price) : null;
-  const score = (p: string) => keys.reduce((n, k) => n + (p.includes(k) ? 2 : 0), 0) + (price && p.includes(price) ? 3 : 0) + (price && hasChinesePrice(p, it.price!) ? 3 : 0);
-  void currency;
-  const best = [...parts].sort((a, b) => score(b.text) - score(a.text))[0];
-  return score(best.text) > 0 ? best : { text, from: 0, to: 1 };
-}
-
-/** 口述裡的中文數字價格（例如 兩百九十、一千九百八十）是否等於這個價格 */
-function hasChinesePrice(text: string, price: number): boolean {
-  const map: Record<string, number> = { 零: 0, 一: 1, 二: 2, 兩: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
-  const unit: Record<string, number> = { 十: 10, 百: 100, 千: 1000, 萬: 10000 };
-  const m = text.match(/[零一二兩三四五六七八九十百千萬]+(?=元|塊)/g);
-  if (!m) return false;
-  for (const s of m) {
-    let total = 0, cur = 0;
-    for (const ch of s) { if (map[ch] != null) cur = map[ch]; else if (unit[ch]) { total += (cur || 1) * unit[ch]; cur = 0; } }
-    if (total + cur === price) return true;
-  }
-  return false;
 }
 
 async function finish(jobId: ObjectId, usd: number) {

@@ -7,7 +7,7 @@ import sharp from "sharp";
 const SOFT = 8, HARD = 70, MAX_CHROMA = 28, HOLE = 4, EDGE_FADE = 0.07;
 
 export async function knockOutBackground(src: string, out: string): Promise<boolean> {
-  const { data, info } = await sharp(src).resize(1200, 1200, { fit: "inside" }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { data, info } = await sharp(src).resize(1200, 1200, { fit: "inside", withoutEnlargement: true }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   const { width: w, height: h } = info;
   const n = w * h;
   const at = (x: number, y: number) => (y * w + x) * 3;

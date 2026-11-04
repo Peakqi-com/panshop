@@ -23,6 +23,8 @@ export function StoryboardEditor({ item: it, asset: a, onChange, onClose }: { it
   const [picker, setPicker] = useState<number | null>(null);
   const [hints, setHints] = useState<Record<number, string>>({});
   const [confirmRewrite, setConfirmRewrite] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
+  const preview = musicChoice !== "auto" && musicChoice !== "synth" && musicChoice !== "none" ? tracks.find((t) => t.id === musicChoice) : undefined;
 
   useEffect(() => { fetch("/api/music").then((r) => r.json()).then((j) => setTracks(j.tracks ?? [])).catch(() => undefined); }, []);
 
@@ -30,6 +32,8 @@ export function StoryboardEditor({ item: it, asset: a, onChange, onClose }: { it
   function patchScene(i: number, set: Partial<SceneRow>) { setScenes((s) => s.map((x, k) => (k === i ? { ...x, ...set } : x))); setDirty(true); }
   function move(i: number, d: number) { setScenes((s) => { const n = [...s]; const [x] = n.splice(i, 1); n.splice(i + d, 0, x); return n; }); setDirty(true); setPicker(null); }
   function remove(i: number) { setScenes((s) => s.filter((_, k) => k !== i)); setDirty(true); setPicker(null); }
+  function duplicate(i: number) { setScenes((s) => { const n = [...s]; n.splice(i + 1, 0, { ...s[i], overlay: s[i].overlay === "headline" ? "none" : s[i].overlay }); return n; }); setDirty(true); setPicker(null); }
+  function tryClose() { if (dirty) setConfirmClose(true); else onClose(); }
 
   async function save(): Promise<boolean> {
     const r = await fetch(`/api/items/${it._id}/storyboard`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ hook, music: musicChoice, scenes }) });
@@ -96,7 +100,9 @@ export function StoryboardEditor({ item: it, asset: a, onChange, onClose }: { it
         <div className="flex flex-wrap gap-2 text-sm">
           <button disabled={anyBusy || scenes.length < 2} onClick={saveOnly} className="btn btn-ghost">{busy === "save" ? "儲存中…" : "儲存"}</button>
           <button disabled={anyBusy || scenes.length < 2} onClick={saveAndRender} className="btn btn-primary">{busy === "render" ? "合成中…" : "儲存並重新合成"}</button>
-          <button disabled={anyBusy} onClick={onClose} className="btn btn-ghost">關閉</button>
+          {confirmClose
+            ? <span className="flex items-center gap-2 rounded-lg bg-red-50 px-2 text-xs text-red-800">還有修改沒儲存<button onClick={onClose} className="btn bg-red-600 px-2 py-1 text-white">不存，關閉</button><button onClick={() => setConfirmClose(false)} className="btn btn-ghost px-2 py-1">繼續編輯</button></span>
+            : <button disabled={anyBusy} onClick={tryClose} className="btn btn-ghost">關閉</button>}
         </div>
       </header>
       {msg && <div role="status" className={`px-4 py-2 text-sm ${msg.bad ? "bg-red-50 text-red-700" : "bg-orange-50 text-orange-900"}`}>{msg.text}</div>}
@@ -117,6 +123,7 @@ export function StoryboardEditor({ item: it, asset: a, onChange, onClose }: { it
                 <option value="none">不要音樂</option>
               </select>
             </label>
+            {preview && <audio controls preload="none" src={preview.url} className="w-full" aria-label={`試聽 ${preview.title}`} />}
             {tracks.length === 0 && <p className="text-xs text-stone-500">曲庫還沒有曲目，自動會用程式合成的音樂。</p>}
             {confirmRewrite
               ? <div className="rounded-lg bg-red-50 p-2 text-xs text-red-800">會蓋掉目前所有場景的文字與圖片選擇。<div className="mt-2 flex gap-2"><button onClick={rewriteAll} className="btn btn-primary px-2 py-1">確定重寫</button><button onClick={() => setConfirmRewrite(false)} className="btn btn-ghost px-2 py-1">取消</button></div></div>
@@ -141,10 +148,12 @@ export function StoryboardEditor({ item: it, asset: a, onChange, onClose }: { it
                     <div className="flex gap-1 text-xs">
                       <button disabled={i === 0} onClick={() => move(i, -1)} className="btn btn-ghost px-2 py-1">上移</button>
                       <button disabled={i === scenes.length - 1} onClick={() => move(i, 1)} className="btn btn-ghost px-2 py-1">下移</button>
+                      <button disabled={scenes.length >= 8} onClick={() => duplicate(i)} className="btn btn-ghost px-2 py-1">複製一場</button>
                       <button disabled={scenes.length <= 2} onClick={() => remove(i)} className="btn btn-ghost px-2 py-1 text-red-600">刪除</button>
                     </div>
                   </div>
                   <label className="block text-xs text-stone-600">旁白（句首方括號是語氣，例如 [溫暖、放慢]，不會念出來）<textarea value={sc.narration} maxLength={200} rows={2} onChange={(e) => patchScene(i, { narration: e.target.value })} className="input mt-0.5 text-sm" /></label>
+                  <NarrationFit text={sc.narration} sec={sc.durationSec} />
                   <label className="block text-xs text-stone-600">字幕<input value={sc.subtitle} maxLength={60} onChange={(e) => patchScene(i, { subtitle: e.target.value })} className="input mt-0.5 text-sm" /></label>
                   <div className="grid grid-cols-3 gap-2 text-xs text-stone-600">
                     <label className="block">鏡頭<select value={sc.motion} onChange={(e) => patchScene(i, { motion: e.target.value })} className="input mt-0.5">{Object.entries(MOTION_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
@@ -183,4 +192,12 @@ function Pick({ url, label, on, onClick }: { url: string; label: string; on: boo
       <img src={url} alt="" className="aspect-square w-full object-contain" /><span className="block truncate px-1 py-0.5 text-stone-600">{label}</span>
     </button>
   );
+}
+
+/** 旁白長度提示：一般語速每秒約 4.5 個字，超過時合成會自動把這場拉長 */
+function NarrationFit({ text, sec }: { text: string; sec: number }) {
+  const n = Array.from(text.replace(/\[[^\]]*\]|［[^］]*］/g, "").replace(/[\s，。、！？,.!?]/g, "")).length;
+  const need = n / 4.5;
+  if (!n) return null;
+  return <p className={`text-xs ${need > sec + 0.5 ? "text-amber-700" : "text-stone-400"}`}>{n} 字，約念 {need.toFixed(1)} 秒{need > sec + 0.5 ? `，比這場的 ${sec} 秒長，合成時會自動延長這一場` : ""}</p>;
 }

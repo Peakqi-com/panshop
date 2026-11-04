@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
   return { title: job?.shopName || "本週新品", description: job ? `${job.metrics.itemCount ?? ""} 件商品，留言代碼即可下單` : undefined };
 }
 
-/** 可購買頁：公開、手機優先。第一階段下單是複製留言範本（第二階段接 IG／WhatsApp） */
+/** 可購買頁：公開、手機優先。下單＝複製「我要 代碼 品名」，再帶顧客去賣家的 IG、LINE 或簡訊 */
 export default async function ShopPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const job = await jobs.byCode(code);
@@ -32,11 +32,11 @@ export default async function ShopPage({ params }: { params: Promise<{ code: str
   return (
     <main className="mx-auto max-w-md px-4 pb-16 pt-8">
       <header className="text-center">
-        <div className="mx-auto h-14 w-14 rounded-full bg-gradient-to-br from-orange-500 to-amber-400" />
+        <div aria-hidden className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-orange-500 to-amber-400 text-2xl font-bold text-white">{Array.from(job.shopName || "新")[0]}</div>
         <h1 className="mt-3 text-2xl font-bold">{job.shopName || "本週新品"}</h1>
         <p className="mt-1 text-sm text-stone-500">{items.length} 件 · 點商品看詳情，留言代碼即可下單</p>
       </header>
-      <ShopGrid items={items} shopName={job.shopName || "本週新品"} shopUrl={shopUrl} qrDataUrl={qr} />
+      <ShopGrid items={items} shopName={job.shopName || "本週新品"} shopUrl={shopUrl} qrDataUrl={qr} contact={{ instagram: job.contact?.instagram ?? "", line: job.contact?.line ?? "", phone: job.contact?.phone ?? "" }} />
       <p className="mt-10 text-center text-xs text-stone-400">Built with PanShop</p>
     </main>
   );

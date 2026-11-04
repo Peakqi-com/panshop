@@ -15,7 +15,7 @@ async function* events() {
   yield { type: "response.completed" } as const;
 }
 const parsed = parseVideoStream(events());
-for await (const _ of parsed) { /* */ }
+for await (const chunk of parsed) void chunk;
 const res = await parsed.finalResult;
 const boxes = recordsOfKind(res.records, "box");
 const dir = await tmpDir();

@@ -113,7 +113,7 @@ export function UploadForm({ needPasscode, sampleAvailable, maxVideoSec = 240, m
           className={`mt-3 grid cursor-pointer place-items-center rounded-xl border-2 border-dashed px-4 py-8 text-center transition ${drag ? "border-orange-400 bg-orange-50" : "border-stone-300 hover:border-stone-400"}`}
         >
           <input ref={inputRef} type="file" accept="video/mp4,video/quicktime,.mov,.mp4" className="hidden" onChange={(e) => pickVideo(e.target.files?.[0])} />
-          <div className="text-3xl">{mode === "replay" ? "📺" : "🎥"}</div>
+          <Icon kind={mode === "replay" ? "replay" : "video"} />
           {file ? (
             <>
               {meta && <video src={meta.url} muted playsInline className="mt-2 max-h-40 rounded-lg" onClick={(e) => e.stopPropagation()} controls />}
@@ -129,10 +129,13 @@ export function UploadForm({ needPasscode, sampleAvailable, maxVideoSec = 240, m
         </div>
       ) : (
         <div className="mt-3">
-          <div onClick={() => inputRef.current?.click()} className="grid cursor-pointer place-items-center rounded-xl border-2 border-dashed border-stone-300 px-4 py-6 text-center hover:border-stone-400">
+          <div onClick={() => inputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
+            onDrop={(e) => { e.preventDefault(); setDrag(false); pickPhotos(e.dataTransfer.files); }}
+            className={`grid cursor-pointer place-items-center rounded-xl border-2 border-dashed px-4 py-6 text-center transition ${drag ? "border-orange-400 bg-orange-50" : "border-stone-300 hover:border-stone-400"}`}>
             <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { pickPhotos(e.target.files); e.target.value = ""; }} />
-            <div className="text-3xl">🖼️</div>
-            <div className="mt-2 font-medium">{photos.length ? `已選 ${photos.length} 張，點一下再加` : "選擇商品照片（可多選）"}</div>
+            <Icon kind="photos" />
+            <div className="mt-2 font-medium">{photos.length ? `已選 ${photos.length} 張，點一下或拖進來再加` : "把商品照片拖進來，或點一下選擇（可多選）"}</div>
             <div className="text-xs text-stone-500">JPG、PNG、WebP · 最多 {maxPhotos} 張</div>
           </div>
           {photos.length > 0 && (
@@ -180,4 +183,11 @@ export function UploadForm({ needPasscode, sampleAvailable, maxVideoSec = 240, m
       </ul>
     </form>
   );
+}
+
+function Icon({ kind }: { kind: "video" | "photos" | "replay" }) {
+  const common = { width: 32, height: 32, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, className: "text-stone-500", "aria-hidden": true };
+  if (kind === "photos") return <svg {...common}><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="10" r="1.6" /><path d="m21 16-5-5-8 8" /></svg>;
+  if (kind === "replay") return <svg {...common}><rect x="3" y="4" width="18" height="13" rx="2" /><path d="M8 21h8M12 17v4" /><path d="m10 8.5 4 2-4 2z" /></svg>;
+  return <svg {...common}><rect x="3" y="6" width="13" height="12" rx="2" /><path d="m16 10 5-3v10l-5-3" /></svg>;
 }

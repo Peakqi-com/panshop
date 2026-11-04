@@ -12,7 +12,7 @@ export function ReviewTable({ data, onChange }: { data: JobPayload; onChange: ()
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [batchPrice, setBatchPrice] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
-  const editable = job.status === "review";
+  const editable = data.canEdit && job.status === "review";
   const low = items.filter((i) => i.confidence.overall < 0.6).length;
   const noPrice = items.filter((i) => i.price == null).length;
   const say = (m: string) => { setMsg(m); setTimeout(() => setMsg(null), 2000); };

@@ -77,10 +77,25 @@ export function MusicManager({ rows }: { rows: MusicRow[] }) {
             </div>
             <audio controls preload="none" src={t.url} className="w-full" />
             <StyleChecks value={t.styles} onChange={(v) => start(() => updateMusicAction(t.id, { styles: v }))} />
-            <p className="text-xs text-stone-500">授權：{t.license || "未填"}</p>
+            <TrackMeta t={t} />
           </li>
         ))}
       </ul>
     </>
+  );
+}
+
+function TrackMeta({ t }: { t: MusicRow }) {
+  const [title, setTitle] = useState(t.title);
+  const [license, setLicense] = useState(t.license);
+  const [pending, start] = useTransition();
+  const [saved, setSaved] = useState(false);
+  const dirty = title.trim() !== t.title || license.trim() !== t.license;
+  return (
+    <div className="grid gap-2 text-xs sm:grid-cols-[1fr_2fr_auto] sm:items-end">
+      <label className="block">曲名<input value={title} maxLength={80} onChange={(e) => { setTitle(e.target.value); setSaved(false); }} className="input mt-0.5" /></label>
+      <label className="block">來源與授權<input value={license} maxLength={200} placeholder="未填" onChange={(e) => { setLicense(e.target.value); setSaved(false); }} className="input mt-0.5" /></label>
+      <button disabled={!dirty || pending || !title.trim()} onClick={() => start(async () => { await updateMusicAction(t.id, { title: title.trim(), license: license.trim() }); setSaved(true); })} className="btn btn-ghost px-2 py-1">{saved ? "已儲存" : "儲存"}</button>
+    </div>
   );
 }

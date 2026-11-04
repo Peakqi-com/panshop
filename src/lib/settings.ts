@@ -39,6 +39,10 @@ export async function setSetting(key: SettingKey, value: string, by = "admin") {
   await secrets.set(SYSTEM, SETTING_KEYS[key].name, value, by);
 }
 
+export async function clearSetting(key: SettingKey) {
+  await secrets.remove(SYSTEM, SETTING_KEYS[key].name);
+}
+
 export async function listSettings() {
   let rows: Awaited<ReturnType<typeof secrets.list>> = [];
   let dbError: string | null = null;

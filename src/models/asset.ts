@@ -16,7 +16,8 @@ export const AssetSchema = z.object({
     voice: z.string().optional(),                      // 實際用的配音：fish、openai、seller、none
     music: z.string().optional(),                      // auto、synth、none 或曲庫曲目 id
     musicLabel: z.string().optional(),                 // 上次實際用的音樂
-    gallery: z.array(z.string()).optional(),           // 曾生成或上傳的場景圖，換圖時可選回來
+    gallery: z.array(z.string()).optional(),
+    price: z.number().nullable().optional(),           // 寫分鏡當時的價格；之後改價會自動重寫提到價格的旁白           // 曾生成或上傳的場景圖，換圖時可選回來
   }).optional(),
   brief: z.object({                                   // 視覺簡報（Spark 依裁圖寫，生圖與短片共用）
     subject: z.string(), materialNotes: z.string(), scene: z.string(), props: z.string(), lighting: z.string(), palette: z.string(),

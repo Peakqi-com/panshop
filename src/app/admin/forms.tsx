@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { fmtTime } from "@/lib/format";
-import { loginAction, saveSettingAction, saveAppSettingsAction, retryStageAction, deleteJobAction, deleteJobsAction, runHealthAction, type HealthRow } from "./actions";
+import { clearSettingAction, loginAction, saveSettingAction, saveAppSettingsAction, retryStageAction, deleteJobAction, deleteJobsAction, runHealthAction, type HealthRow } from "./actions";
 import { useRouter } from "next/navigation";
 import { STAGES, STAGE_LABEL, type Stage } from "@/lib/stages";
 import { STYLES, type StyleId } from "@/lib/config";
@@ -32,6 +32,7 @@ export function SettingForm(props: { settingKey: string; label: string; env: str
       <div className="mt-2 flex gap-2">
         <input name="value" type="password" autoComplete="off" className="input flex-1 font-mono text-sm" placeholder="貼上新值" />
         <button disabled={pending} className="btn btn-primary">儲存</button>
+        {props.hint && <ClearKey settingKey={props.settingKey} />}
       </div>
       {state && state.key === props.settingKey && <p className={`mt-2 text-sm ${state.ok ? "text-green-700" : "text-red-600"}`}>{state.ok ? "已儲存" : state.error}</p>}
     </form>
@@ -52,6 +53,7 @@ export function AppSettingsForm({ value }: { value: AppSettings }) {
         <label className="text-sm"><span className="font-medium">直播回放長度上限（秒）</span><input name="maxReplaySec" type="number" min={60} max={1800} defaultValue={value.maxReplaySec} className="input mt-1" /></label>
         <label className="text-sm"><span className="font-medium">照片匯入張數上限</span><input name="maxPhotos" type="number" min={1} max={60} defaultValue={value.maxPhotos} className="input mt-1" /></label>
         <label className="text-sm sm:col-span-2"><span className="font-medium">範例影片網址</span><input name="sampleVideoUrl" defaultValue={value.sampleVideoUrl} placeholder="空白＝用環境變數 SAMPLE_VIDEO_URL" className="input mt-1 font-mono text-xs" /></label>
+        <label className="text-sm sm:col-span-2"><span className="font-medium">首頁範例成果（掃描代碼）</span><input name="featuredJobCode" defaultValue={value.featuredJobCode} placeholder="例如 2edauk4btx；空白不顯示" className="input mt-1 font-mono text-xs" /></label>
         <label className="text-sm sm:col-span-2"><span className="font-medium">首頁公告</span><input name="announcement" defaultValue={value.announcement} placeholder="空白不顯示" className="input mt-1" /></label>
         <label className="text-sm"><span className="font-medium">短片配音</span>
           <select name="voiceMode" defaultValue={value.voiceMode} className="input mt-1"><option value="tts">專業 TTS 含語氣指令（Fish Audio，備援 OpenAI）</option><option value="seller">賣家原聲（從影片口述切出）</option><option value="none">無口白，只有字幕與音樂</option></select>
@@ -71,11 +73,13 @@ export function AppSettingsForm({ value }: { value: AppSettings }) {
 export function RetryButtons({ jobId }: { jobId: string }) {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
+  const [armed, setArmed] = useState<Stage | null>(null);
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs">
-      <span className="text-stone-500">從某個 stage 重跑：</span>
-      {STAGES.map((s) => (
-        <button key={s} disabled={pending} onClick={() => start(async () => { await retryStageAction(jobId, s as Stage); setMsg(`已從「${STAGE_LABEL[s]}」重跑`); })} className="btn btn-ghost px-2 py-1">{STAGE_LABEL[s]}</button>
+      <span className="text-stone-500">從某個 stage 重跑（會重新花模型費用）：</span>
+      {armed && <span className="flex items-center gap-1 rounded-lg bg-red-50 px-2 py-1 text-red-800">確定從「{STAGE_LABEL[armed]}」重跑？<button disabled={pending} onClick={() => start(async () => { await retryStageAction(jobId, armed); setMsg(`已從「${STAGE_LABEL[armed]}」重跑`); setArmed(null); })} className="btn bg-red-600 px-2 py-0.5 text-white">確定</button><button onClick={() => setArmed(null)} className="px-1">取消</button></span>}
+      {!armed && STAGES.map((s) => (
+        <button key={s} disabled={pending} onClick={() => setArmed(s as Stage)} className="btn btn-ghost px-2 py-1">{STAGE_LABEL[s]}</button>
       ))}
       {msg && <span className="text-green-700">{msg}</span>}
     </div>
@@ -134,4 +138,12 @@ export function BulkDelete({ ids }: { ids: string[] }) {
       {armed && <button type="button" onClick={() => setArmed(false)} className="text-xs text-stone-500">取消</button>}
     </div>
   );
+}
+
+function ClearKey({ settingKey }: { settingKey: string }) {
+  const [armed, setArmed] = useState(false);
+  const [pending, start] = useTransition();
+  return armed
+    ? <><button type="button" disabled={pending} onClick={() => start(() => clearSettingAction(settingKey))} className="btn bg-red-600 text-white">確定清除</button><button type="button" onClick={() => setArmed(false)} className="text-xs text-stone-500">取消</button></>
+    : <button type="button" onClick={() => setArmed(true)} className="btn btn-ghost text-red-700">清除</button>;
 }
