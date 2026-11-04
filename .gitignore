@@ -45,3 +45,8 @@ eval/footage/
 *.mp4
 *.mov
 eval/smoke/_out/
+
+# local tooling config
+CLAUDE.md
+AGENTS.md
+.claude/
