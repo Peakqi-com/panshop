@@ -213,34 +213,81 @@ function ItemCard({ canEdit, onStoryboard, item: it, asset: a, producing, jobSty
   );
 }
 
+type CommentResult = { text: string; reply: string; itemCode: string | null; itemTitle: string | null; model: string; ms: number; buyer?: string | null; lines?: { code: string; qty: number; title: string; price: number | null; currency: string }[] };
+
+/** 留言對商品：可一次貼整串直播留言；「A3+1」這類下單由規則解析並彙整成訂單表，提問才交給 Muse Spark Open */
 function CommentDemo({ jobId, className = "" }: { jobId: string; className?: string }) {
   const t = useT();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [log, setLog] = useState<{ text: string; reply: string; itemCode: string | null; itemTitle: string | null; model: string; ms: number }[]>([]);
+  const [log, setLog] = useState<CommentResult[]>([]);
   async function send(e: React.FormEvent) {
     e.preventDefault();
-    if (!text.trim()) return;
+    const rows = text.split(/\n+/).map((x) => x.trim()).filter(Boolean).slice(0, 30);
+    if (!rows.length) return;
     setBusy(true);
-    const r = await fetch("/api/comments", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jobId, text }) });
-    const j = await r.json();
-    setLog((l) => [{ text, reply: j.reply ?? j.error, itemCode: j.itemCode ?? null, itemTitle: j.itemTitle ?? null, model: j.model ?? "", ms: j.ms ?? 0 }, ...l]);
+    for (const row of rows) {
+      const r = await fetch("/api/comments", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jobId, text: row }) });
+      const j = await r.json().catch(() => ({}));
+      setLog((l) => [{ text: row, reply: j.reply ?? j.error ?? "", itemCode: j.itemCode ?? null, itemTitle: j.itemTitle ?? null, model: j.model ?? "", ms: j.ms ?? 0, buyer: j.buyer ?? null, lines: j.lines }, ...l]);
+    }
     setText(""); setBusy(false);
   }
+  // 訂單表：同一位買家同一件合併數量
+  const orders = new Map<string, { buyer: string; code: string; title: string; qty: number; price: number | null; currency: string }>();
+  for (const l of [...log].reverse()) for (const x of l.lines ?? []) {
+    const buyer = l.buyer || t("（未署名）", "(no name)");
+    const k = `${buyer}|${x.code}`;
+    const o = orders.get(k);
+    if (o) o.qty += x.qty; else orders.set(k, { buyer, code: x.code, title: x.title, qty: x.qty, price: x.price, currency: x.currency });
+  }
+  const rows = Array.from(orders.values());
+  const total = rows.every((r) => r.price != null) && rows.length ? rows.reduce((s, r) => s + r.price! * r.qty, 0) : null;
+  const csv = () => {
+    const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+    const body = [["buyer", "code", "title", "qty", "unit_price", "currency", "subtotal"], ...rows.map((r) => [r.buyer, r.code, r.title, r.qty, r.price ?? "", r.currency, r.price != null ? r.price * r.qty : ""])].map((r) => r.map(esc).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob(["\uFEFF" + body], { type: "text/csv" }));
+    a.download = `orders-${jobId}.csv`; a.click();
+  };
   return (
     <div className={`card p-4 ${className}`}>
-      <h3 className="font-semibold">{t("留言對商品", "Comment → product")}</h3>
-      <p className="text-xs text-stone-500">{t("貼上顧客留言，例如「A3 多少」「還有藍色的嗎」。由開放權重的 Muse Spark Open（Baseten 託管）判斷意圖、對上商品、草擬回覆。", "Paste a shopper comment such as “how much is A3?” or “got it in blue?”. The open-weight Muse Spark Open (hosted on Baseten) reads the intent, matches the product and drafts a reply.")}</p>
-      <form onSubmit={send} className="mt-3 flex gap-2">
-        <input value={text} onChange={(e) => setText(e.target.value)} className="input" placeholder={t("顧客留言…", "Shopper comment…")} />
-        <button disabled={busy} className="btn btn-primary whitespace-nowrap">{busy ? "…" : t("送出", "Send")}</button>
+      <h3 className="font-semibold">{t("直播留言 → 訂單", "Live comments → orders")}</h3>
+      <p className="text-xs text-stone-500">{t("把直播或貼文的留言整串貼進來，一行一則。「A3+1」「王小美：A1+1 B2 x2」這類下單直接用規則解析並整理成訂單表；「A3 多少」「還有藍色的嗎」這類提問，由開放權重的 Muse Spark Open（Baseten 託管）判斷並草擬回覆。", "Paste the comments from a live stream or post, one per line. Orders like “A3+1” or “Amy: A1+1 B2 x2” are parsed by rules into an order sheet; questions like “how much is A3?” or “got it in blue?” go to the open-weight Muse Spark Open (hosted on Baseten), which drafts a reply.")}</p>
+      <form onSubmit={send} className="mt-3 space-y-2">
+        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} className="input font-mono text-xs" placeholder={t("王小美：A1+1\nA3 x2\n+1 B1\nC1 還有別的顏色嗎？", "Amy: A1+1\nA3 x2\n+1 B1\nDoes C1 come in other colors?")} />
+        <button disabled={busy || !text.trim()} className="btn btn-primary">{busy ? t("處理中…", "Working…") : t("解析留言", "Process comments")}</button>
       </form>
+      {rows.length > 0 && (
+        <div className="mt-4">
+          <div className="flex items-baseline justify-between">
+            <h4 className="text-sm font-semibold">{t(`訂單表（${rows.length} 筆）`, `Order sheet (${rows.length})`)}</h4>
+            <button type="button" onClick={csv} className="text-xs text-stone-500 underline hover:text-stone-900">{t("下載訂單 CSV", "Download orders CSV")}</button>
+          </div>
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="text-left text-stone-500"><tr><th className="py-1 pr-2">{t("買家", "Buyer")}</th><th className="py-1 pr-2">{t("商品", "Item")}</th><th className="py-1 pr-2 text-right">{t("數量", "Qty")}</th><th className="py-1 text-right">{t("小計", "Subtotal")}</th></tr></thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={`${r.buyer}|${r.code}`} className="border-t border-stone-100">
+                    <td className="py-1 pr-2">{r.buyer}</td>
+                    <td className="py-1 pr-2"><span className="font-mono text-orange-700">{r.code}</span> {r.title}</td>
+                    <td className="py-1 pr-2 text-right">{r.qty}</td>
+                    <td className="py-1 text-right">{r.price != null ? fmtPrice(r.price * r.qty, r.currency) : t("未定價", "No price")}</td>
+                  </tr>
+                ))}
+              </tbody>
+              {total != null && <tfoot><tr className="border-t border-stone-200 font-semibold"><td className="py-1" colSpan={3}>{t("合計", "Total")}</td><td className="py-1 text-right">{fmtPrice(total, rows[0].currency)}</td></tr></tfoot>}
+            </table>
+          </div>
+        </div>
+      )}
       <ul className="mt-3 space-y-2 text-sm">
         {log.map((l, i) => (
           <li key={i} className="rounded-lg bg-stone-50 p-2">
             <div className="text-stone-500">{t("顧客：", "Shopper: ")}{l.text}</div>
-            <div className="mt-0.5">{t("小編：", "Reply: ")}{l.reply} {l.itemCode && <span className="ml-1 rounded bg-orange-100 px-1.5 py-0.5 font-mono text-xs text-orange-700">{l.itemCode} {l.itemTitle}</span>}</div>
-            <div className="mt-0.5 text-[10px] text-stone-400">{l.model} · {l.ms} ms</div>
+            <div className="mt-0.5">{t("回覆：", "Reply: ")}{l.reply} {!l.lines?.length && l.itemCode && <span className="ml-1 rounded bg-orange-100 px-1.5 py-0.5 font-mono text-xs text-orange-700">{l.itemCode} {l.itemTitle}</span>}</div>
+            <div className="mt-0.5 text-[10px] text-stone-400">{l.model === "rule" ? t("規則解析（不用模型）", "Rule-based (no model call)") : l.model} · {l.ms} ms</div>
           </li>
         ))}
       </ul>

@@ -2,7 +2,9 @@
 
 **Pan your phone across your products. Your shop is ready.**
 
-PanShop turns one slow pan of your phone camera into a complete store: a deduplicated product list, clean product images, titles and descriptions, a Meta-ready catalog file, a shoppable page, and one short vertical video per product. Talk while you pan and the names and prices come along for free.
+PanShop is the before-and-after-the-show back office for live-stream and group-buy sellers in Taiwan and across Asia. Before going live, one slow pan of the phone camera becomes a product list with order codes (A1, A2, …), product images, titles and descriptions, a Meta-ready catalog, a shoppable page and one short vertical video per item. During and after the show, shoppers comment “A3+1” and PanShop turns the comment thread into an order sheet. Talk while you pan and the names and prices come along for free.
+
+For sellers who have never had a product catalog, PanShop is the on-ramp to Meta's catalog, shops and catalog ads.
 
 PanShop is built for the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon) (Startup track, theme *Build for Your World*) by [PEAKQI](https://peakqi.com), Taipei.
 
@@ -12,7 +14,15 @@ PanShop is built for the [Meta Global AI Developer Hackathon](https://cerebralva
 
 ## Why
 
-Small sellers, group-buy hosts, market vendors and resellers rotate inventory every week. Listing 20 products still means a day of photographing, background removal, copywriting, catalog entry and video editing. PanShop collapses that day into one pan of the camera: one to three minutes of video, shot on whatever table the products are already on.
+Live-stream and group-buy selling in Taiwan and Southeast Asia runs on comments: the host holds up an item and shoppers type “A3+1”. The comment-ordering tools sellers already use assume the product list is already built, with codes, photos and prices. Building that list for 20 items still takes most of a day of photographing, background removal, copywriting and catalog entry, and it has to be redone every week as stock turns over.
+
+Single-item listing tools in marketplace and resale apps handle one product per photo and have no order codes. PanShop builds the whole coded list from one video, so it sits in front of the comment-ordering step rather than competing with it:
+
+| When | What PanShop does |
+|---|---|
+| Before the show | One 1 to 3 minute pan becomes the coded product list, photos, catalog, shop page and a short video per item |
+| During and after | Comment threads become an order sheet: “A3+1” is parsed by rules, questions go to Muse Spark Open |
+| Every week | Pan again to refresh the list (inventory diff against last week is on the roadmap) |
 
 ## What it does
 
@@ -23,8 +33,9 @@ Small sellers, group-buy hosts, market vendors and resellers rotate inventory ev
 3. **Identify**: Muse Spark reads the best crops of each item and what you said during the pan, transcribed by Muse Voice Transcribe, to produce title, attributes, category, price and description.
 4. **Review**: one table. Fix a price, merge or split items, drop what you do not sell. A timeline shows every second each item was on camera, so a product that left and came back still counts once.
 5. **Shoot**: Muse Spark writes a visual brief for each item from its own crops, Muse Image produces three studio angles (front, three-quarter, side) and a lifestyle shot, and Muse Spark checks every image against the original crops. A shot that fails the check is regenerated once with the problems listed.
-6. **Shop**: export a Meta Commerce Manager catalog CSV, open a mobile shoppable page with the seller's Instagram, LINE or SMS as the order button, and get one 9:16 product video per item.
+6. **Shop**: every item gets an order code (A1, A2, …). Export a Meta Commerce Manager catalog CSV, open a mobile shoppable page with the seller's Instagram, LINE or SMS as the order button, and get one 9:16 product video per item.
 7. **Direct the video**: Muse Spark writes each video as a 4 to 5 scene storyboard: which shot to use, camera move, caption, and narration with tone directions. The renderer keys studio shots onto a styled background, adds captions, headline, price panel and music, and mixes the narration. Sellers can edit every scene, swap images, regenerate one scene's text or image, reorder scenes, pick music from the admin music library, and re-render.
+8. **Sell live**: paste the comment thread from a live stream or post, one comment per line. Orders such as “A3+1”, “A3 x2”, “+1 B1” or “Amy: A1+1 B2 x2” are parsed by rules, without a model call, into an order sheet with buyer, item, quantity and subtotal, downloadable as CSV. Questions such as “how much is A3?” or “got it in blue?” go to Muse Spark Open, which matches the product and drafts a reply.
 
 ## Meta models used
 
@@ -34,7 +45,7 @@ Small sellers, group-buy hosts, market vendors and resellers rotate inventory ev
 | Muse Spark 1.3 (`muse-spark-1.3`) | Category discovery, crop matching for deduplication, product attributes, copy, visual briefs, image QA, video storyboards |
 | Muse Voice Transcribe (`muse-voice-transcribe-1.0`) | Spoken product names and prices with turn-level timestamps |
 | Muse Image (`muse-image-1.0`) | Studio angles, lifestyle shots and 9:16 storyboard scenes, all referenced on the item's own crops |
-| Muse Spark Open (open weights, hosted on Baseten) | Comment-to-product matching and reply drafts on the shoppable page. *Built with Muse Spark Open.* |
+| Muse Spark Open (open weights, hosted on Baseten) | Shopper questions in live and post comments: intent, matching product code and a reply draft. Order comments like “A3+1” are parsed by rules first. *Built with Muse Spark Open.* |
 
 Every model in the pipeline is a Meta model. The Model API has no text-to-speech model, so videos do not use synthetic narration: Muse Voice Transcribe timestamps the seller's own words about each product, and the renderer cuts that sentence from the original audio into the hero scene. When the seller didn't speak about an item, or the speech language doesn't match the video language, the video carries captions and music only.
 
@@ -49,7 +60,7 @@ upload (Blob client upload)
   │                → tracks → best-angle crops → mask cutouts on white
   ├─ 4 dedup       rule: two tracks visible at the same time are different items;
   │                non-overlapping tracks are matched by Muse Spark on their crops
-  ├─ 5 transcribe  Muse Voice Transcribe → Traditional Chinese → names and prices per turn
+  ├─ 5 transcribe  Muse Voice Transcribe → names and prices per turn
   ├─ 6 identify    Muse Spark per item: crops + the speech from when it was on camera
   │
   ▼  review table + timeline (human confirms once)
@@ -114,7 +125,7 @@ pnpm dev
 | `FFMPEG_PATH` | Optional local ffmpeg; `ffmpeg-static` is used when unset |
 | `NEXT_PUBLIC_SITE_URL` | Public URL, used by stages to call the next stage |
 
-Checks that run in CI on every push: `pnpm typecheck`, `pnpm lint`, `pnpm test` (unit tests for price parsing, tone directions, the storyboard schema and background removal) and `pnpm build`.
+Checks that run in CI on every push: `pnpm typecheck`, `pnpm lint`, `pnpm test` (unit tests for price parsing, comment order parsing, tone directions, the storyboard schema, background removal and localized status text) and `pnpm build`.
 
 Model smoke tests, each one call against the Meta Model API:
 
@@ -144,7 +155,7 @@ tests/                   unit tests (vitest)
 
 ## Status and hackathon disclosure
 
-- All code in this repository was written during the hackathon window (26 Oct to 4 Nov 2026).
+- All code in this repository was written during the hackathon window (26 Oct to 5 Nov 2026).
 - The product is designed as a new module of our production marketing-content SaaS. That product is linked, not included; no existing code or customer assets are in this repository.
 - Demo footage is a pan across our own household items. No third-party products or brands.
 - Instagram and WhatsApp publishing are on the roadmap and are not part of this submission. Catalog export targets the Meta Commerce Manager CSV format.
@@ -152,10 +163,10 @@ tests/                   unit tests (vitest)
 
 ## Roadmap
 
-- Instagram: publish Reels via the Content Publishing API; product tags in markets with native checkout; comment-to-DM purchase links
-- WhatsApp: catalog sync and conversational ordering
-- Ads: Advantage+ catalog ad drafts from the generated catalog
-- Shoppable video: comment-to-product matching on live replays at scale, with automatic DM replies
+1. **Live replay to real product clips and orders**: cut each item's on-camera segment out of the replay as a 9:16 clip using its SAM track (real footage, near-zero cost); keep orders and optional stock per item.
+2. **Weekly re-pan to inventory diff**: match this week's items against last week's with the same crop matching used for deduplication, list new, still here and sold, and mark sold items out of stock in the catalog instead of deleting them.
+3. **Meta integration**: sync through the Catalog API instead of CSV, publish Reels, draft Advantage+ catalog ads, and read live comments through the Graph API after App Review.
+4. **Speech**: test Muse Voice Transcribe on Taiwanese Hokkien price calls, which are common in Taiwanese live selling.
 
 ## Team
 

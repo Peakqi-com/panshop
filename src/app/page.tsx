@@ -22,8 +22,8 @@ export default async function Home() {
             {lang === "en" ? <>Pan your phone across your products.<br />Your shop is ready.</> : <>對著商品慢慢掃一圈，<br />你的店就開好了。</>}
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-stone-600">
-            {t("掃一段影片、丟一疊照片，或上傳直播回放。PanShop 會切出每一件商品、寫好品名與描述、做出多角度商品圖，匯出 Meta 商品目錄、可購買頁，還有每件一支形象短片。",
-              "Shoot one video, drop in a pile of photos, or upload a live-stream replay. PanShop cuts out every product, writes the title and description, makes multi-angle product photos, and exports a Meta catalog, a shop page and a short promo video for each item.")}
+            {t("直播、團購賣家的開播前後台。掃一段影片、丟一疊照片，或上傳直播回放，PanShop 會切出每一件商品、編好下單代碼、寫好品名與描述、做出多角度商品圖，匯出 Meta 商品目錄、可購買頁和每件一支短片；觀眾留言「A3+1」，直接整理成訂單表。",
+              "The before-and-after-the-show back office for live and group-buy sellers. Shoot one video, drop in photos, or upload a live replay: PanShop cuts out every product, gives it an order code, writes the title and description, makes multi-angle photos, and exports a Meta catalog, a shop page and a short video per item. When shoppers comment “A3+1”, it becomes an order sheet.")}
           </p>
           <ol className="mt-8 grid gap-3 text-sm sm:grid-cols-3">
             {[

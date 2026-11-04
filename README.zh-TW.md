@@ -2,7 +2,9 @@
 
 **掃一圈，就開賣。**
 
-PanShop 把手機對著商品慢慢掃過一圈的影片，變成一間完整的店：去重後的商品清單、乾淨的商品圖、品名與描述、可直接上傳 Meta 的目錄檔、一個可購買頁，以及每件商品一支直式短影片。邊拍邊講，品名和價格就順便帶進來。
+PanShop 是台灣與亞洲直播、團購賣家的開播前後台。開播前，手機對著商品慢慢掃一圈，就有帶下單代碼（A1、A2…）的商品清單、商品圖、品名與描述、可直接上傳 Meta 的目錄檔、可購買頁，以及每件一支直式短影片。直播中和直播後，觀眾留言「A3+1」，PanShop 把整串留言整理成訂單表。邊拍邊講，品名和價格就順便帶進來。
+
+對還沒有商品目錄的社群賣家來說，PanShop 是接上 Meta 目錄、商店與目錄廣告的入口。
 
 PanShop 是奇鋒國際（[PEAKQI](https://peakqi.com)，台北）參加 [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon)（Startup 賽道，主題 *Build for Your World*）的作品。
 
@@ -12,7 +14,15 @@ PanShop 是奇鋒國際（[PEAKQI](https://peakqi.com)，台北）參加 [Meta G
 
 ## 為什麼做這個
 
-團購主、二手賣家、市集攤商、代購，商品每週都在換。上架 20 件商品，仍然要花一整天拍照、去背、寫文案、建目錄、剪影片。PanShop 把這一天壓縮成一段影片：一到三分鐘，就在商品原本擺著的桌上拍。
+台灣與東南亞的直播、團購是靠留言成交的：主播拿起一件商品，觀眾打「A3+1」。賣家現在用的留言下單工具，都假設商品清單已經建好，有代碼、照片和價格。但建一份 20 件的清單，拍照、去背、寫文案、建目錄仍要花大半天，而且商品每週都在換，每週都要重來。
+
+電商平台和二手 App 的拍照上架工具，一張照片處理一件，也沒有下單代碼。PanShop 用一支影片建好整份帶代碼的清單，補在留言下單的前面，跟這些工具互補而不是競爭：
+
+| 時段 | PanShop 做什麼 |
+|---|---|
+| 開播前 | 掃一圈 1 到 3 分鐘，就有帶代碼的清單、商品圖、目錄、可購買頁和每件一支短片 |
+| 直播中與直播後 | 整串留言變成訂單表：「A3+1」用規則解析，提問交給 Muse Spark Open |
+| 每週 | 再掃一次更新清單（跟上週比對庫存差異在藍圖中） |
 
 ## 做什麼
 
@@ -23,8 +33,9 @@ PanShop 是奇鋒國際（[PEAKQI](https://peakqi.com)，台北）參加 [Meta G
 3. **認**：Muse Spark 看每件商品最清楚的幾張裁圖，加上 Muse Voice Transcribe 轉寫的口述，產生品名、屬性、分類、價格與描述。
 4. **確認**：一張表。改價格、合併或拆分、刪掉不賣的。時間軸顯示每件商品在鏡頭內的秒數，離開又回來的商品仍然只算一件。
 5. **拍**：Muse Spark 依每件商品自己的裁圖寫視覺簡報，Muse Image 生成三個棚拍角度（正面、四十五度、側面）與一張情境圖，再由 Muse Spark 逐張比對原品；不合格的帶著問題重生一次。
-6. **開賣**：匯出 Meta Commerce Manager 目錄 CSV；手機版可購買頁的下單按鈕直接帶顧客到賣家的 Instagram、LINE 或簡訊；每件商品一支 9:16 形象短片。
+6. **開賣**：每件商品都有下單代碼（A1、A2…）。匯出 Meta Commerce Manager 目錄 CSV；手機版可購買頁的下單按鈕直接帶顧客到賣家的 Instagram、LINE 或簡訊；每件商品一支 9:16 形象短片。
 7. **導短片**：Muse Spark 先把每支短片寫成 4 到 5 場的分鏡，包含用哪張圖、鏡頭運動、字幕，以及含語氣指令的旁白。合成時把棚拍圖去背放到風格背景上，加字幕、大標、價格與音樂，再混入旁白。賣家可以逐場改字、換圖、單場重寫文字或重生畫面、調順序、從後台曲庫選音樂，然後重新合成。
+8. **直播接單**：把直播或貼文的留言整串貼進來，一行一則。「A3+1」「A3 x2」「+1 B1」「王小美：A1+1 B2 x2」這類下單用規則解析，不呼叫模型，直接整理成含買家、商品、數量、小計的訂單表，可下載 CSV。「A3 多少」「還有藍色的嗎」這類提問交給 Muse Spark Open，對上商品並草擬回覆。
 
 ## 使用的 Meta 模型
 
@@ -34,7 +45,7 @@ PanShop 是奇鋒國際（[PEAKQI](https://peakqi.com)，台北）參加 [Meta G
 | Muse Spark 1.3（`muse-spark-1.3`） | 品類列舉、裁圖比對去重、商品屬性、文案、視覺簡報、商品圖品管、短片分鏡 |
 | Muse Voice Transcribe（`muse-voice-transcribe-1.0`） | 口述的品名與價格，附 turn 級時間戳 |
 | Muse Image（`muse-image-1.0`） | 三角度棚拍圖、情境圖、9:16 分鏡場景圖，全部以商品自己的裁圖為參考 |
-| Muse Spark Open（開放權重，Baseten 託管） | 可購買頁的留言對商品與回覆草稿。*Built with Muse Spark Open.* |
+| Muse Spark Open（開放權重，Baseten 託管） | 直播與貼文留言裡的提問：判斷意圖、對上商品代碼、草擬回覆。「A3+1」這類下單留言先用規則解析。*Built with Muse Spark Open.* |
 
 整條流程用的全是 Meta 模型。Model API 沒有語音合成模型，所以短片不用合成語音：Muse Voice Transcribe 標出賣家講到每件商品的那一句，合成時從原始音軌切出來，放在主角那一場。賣家沒講到的商品，或口述語言和短片語言不同時，短片只有字幕和音樂。
 
@@ -49,7 +60,7 @@ PanShop 是奇鋒國際（[PEAKQI](https://peakqi.com)，台北）參加 [Meta G
   │                → track → 最佳角度裁圖 → 遮罩合成白底
   ├─ 4 dedup       規則：同時出現在畫面上的兩條 track 一定是不同件；
   │                時間不重疊的 track 才交給 Muse Spark 看裁圖比對
-  ├─ 5 transcribe  Muse Voice Transcribe → 繁體中文 → 每句抽品名與價格
+  ├─ 5 transcribe  Muse Voice Transcribe → 每句抽品名與價格
   ├─ 6 identify    Muse Spark 逐件：裁圖加上它入鏡時段的口述
   │
   ▼  確認表與時間軸（人只確認一次）
@@ -114,7 +125,7 @@ pnpm dev
 | `FFMPEG_PATH` | 本機 ffmpeg（選填），沒設就用 `ffmpeg-static` |
 | `NEXT_PUBLIC_SITE_URL` | 對外網址，stage 用它呼叫下一個 stage |
 
-CI 每次 push 都會跑：`pnpm typecheck`、`pnpm lint`、`pnpm test`（價格解析、語氣指令、分鏡 schema、去背的單元測試）與 `pnpm build`。
+CI 每次 push 都會跑：`pnpm typecheck`、`pnpm lint`、`pnpm test`（價格解析、留言下單解析、語氣指令、分鏡 schema、去背、狀態文字中英對照的單元測試）與 `pnpm build`。
 
 模型煙霧測試，每個指令只打一次 Meta Model API：
 
@@ -144,7 +155,7 @@ tests/                   單元測試（vitest）
 
 ## 現況與參賽聲明
 
-- 本 repo 所有程式碼皆於黑客松期間（2026 年 10 月 26 日至 11 月 4 日）撰寫。
+- 本 repo 所有程式碼皆於黑客松期間（2026 年 10 月 26 日至 11 月 5 日）撰寫。
 - 本產品設計為我們既有、營運中的行銷內容 SaaS 的新模組。該產品只以連結接入，不包含在本 repo；本 repo 沒有任何既有程式碼或客戶素材。
 - Demo 影片拍的是我們自己家裡的物品，沒有第三方商品或品牌。
 - Instagram 與 WhatsApp 發布在藍圖中，不屬於本次送件範圍。目錄匯出採 Meta Commerce Manager 的 CSV 格式。
@@ -152,10 +163,10 @@ tests/                   單元測試（vitest）
 
 ## 藍圖
 
-- Instagram：以 Content Publishing API 發布 Reels；在有站內結帳的市場自動掛商品標籤；留言關鍵字自動私訊購買連結
-- WhatsApp：目錄同步與對話下單
-- 廣告：由生成的目錄直接建立 Advantage+ 目錄廣告草稿
-- 影片導購：大量直播回放的留言自動對上商品，並自動私訊回覆
+1. **直播回放 → 商品真實片段與訂單**：依每件商品的 SAM 追蹤區段，從回放剪出該商品被介紹的真實 9:16 片段（真實畫面、成本幾乎為零）；訂單與每件的庫存（選填）存檔。
+2. **每週再掃 → 庫存差異**：用去重同一套裁圖比對，把這週的商品對上上週，列出新進、還在、已售出，目錄把已售出標成缺貨而不是刪除。
+3. **Meta 串接**：目錄改用 Catalog API 同步、發布 Reels、建立 Advantage+ 目錄廣告草稿；通過 App Review 後以 Graph API 直接讀直播留言。
+4. **語音**：實測 Muse Voice Transcribe 聽台語報價（例如「這个一百五」），台灣直播很常見。
 
 ## 團隊
 
