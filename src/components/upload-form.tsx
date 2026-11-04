@@ -106,9 +106,9 @@ export function UploadForm({ needPasscode, trialPerDay, sampleAvailable, maxVide
   const current = MODES.find((m) => m.id === mode)!;
 
   return (
-    <form id="start" onSubmit={submit} className="card rise scroll-mt-20 p-6 shadow-sm">
-      <div className="flex gap-1 rounded-lg bg-stone-100 p-1 text-sm">
-        {MODES.map((m) => <button key={m.id} type="button" onClick={() => { setMode(m.id); setFile(null); setMeta(null); setWarn(null); setError(null); }} className={`flex-1 whitespace-nowrap rounded-md px-1.5 py-1.5 text-xs sm:px-2 sm:text-sm ${mode === m.id ? "bg-white font-medium shadow-sm" : "text-stone-500"}`}>{t(...m.label)}</button>)}
+    <form id="start" onSubmit={submit} className="card rise scroll-mt-24 p-5 sm:p-6">
+      <div className="flex gap-1 rounded-xl border-[2.5px] border-[var(--ink)] bg-[var(--bg)] p-1 text-sm">
+        {MODES.map((m) => <button key={m.id} type="button" onClick={() => { setMode(m.id); setFile(null); setMeta(null); setWarn(null); setError(null); }} className={`flex-1 whitespace-nowrap rounded-md px-1.5 py-1.5 text-xs sm:px-2 sm:text-sm ${mode === m.id ? "bg-[var(--yellow)] font-black ring-2 ring-[var(--ink)]" : "font-bold text-stone-600 hover:bg-white"}`}>{t(...m.label)}</button>)}
       </div>
       <p className="mt-2 text-xs text-stone-500">{t(...current.hint)}</p>
 
@@ -116,7 +116,7 @@ export function UploadForm({ needPasscode, trialPerDay, sampleAvailable, maxVide
         <div
           onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
           onDrop={(e) => { e.preventDefault(); setDrag(false); pickVideo(e.dataTransfer.files?.[0]); }} onClick={() => inputRef.current?.click()}
-          className={`mt-3 grid cursor-pointer place-items-center rounded-xl border-2 border-dashed px-4 py-8 text-center transition ${drag ? "border-orange-400 bg-orange-50" : "border-stone-300 hover:border-stone-400"}`}
+          className={`mt-3 grid cursor-pointer place-items-center rounded-xl border-[2.5px] border-dashed px-4 py-8 text-center transition ${drag ? "border-[var(--accent)] bg-orange-50" : "border-[var(--ink)] bg-[var(--bg)] hover:bg-white"}`}
         >
           <input ref={inputRef} type="file" accept="video/mp4,video/quicktime,.mov,.mp4" className="hidden" onChange={(e) => pickVideo(e.target.files?.[0])} />
           <Icon kind={mode === "replay" ? "replay" : "video"} />
@@ -138,7 +138,7 @@ export function UploadForm({ needPasscode, trialPerDay, sampleAvailable, maxVide
           <div onClick={() => inputRef.current?.click()}
             onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
             onDrop={(e) => { e.preventDefault(); setDrag(false); pickPhotos(e.dataTransfer.files); }}
-            className={`grid cursor-pointer place-items-center rounded-xl border-2 border-dashed px-4 py-6 text-center transition ${drag ? "border-orange-400 bg-orange-50" : "border-stone-300 hover:border-stone-400"}`}>
+            className={`grid cursor-pointer place-items-center rounded-xl border-[2.5px] border-dashed px-4 py-6 text-center transition ${drag ? "border-[var(--accent)] bg-orange-50" : "border-[var(--ink)] bg-[var(--bg)] hover:bg-white"}`}>
             <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { pickPhotos(e.target.files); e.target.value = ""; }} />
             <Icon kind="photos" />
             <div className="mt-2 font-medium">{photos.length ? t(`已選 ${photos.length} 張，點一下或拖進來再加`, `${photos.length} selected. Click or drop to add more`) : t("把商品照片拖進來，或點一下選擇（可多選）", "Drop product photos here, or click to choose (multiple allowed)")}</div>
@@ -175,11 +175,11 @@ export function UploadForm({ needPasscode, trialPerDay, sampleAvailable, maxVide
         {needPasscode && <label className="block text-sm"><span className="font-medium">{t("通行碼", "Passcode")}</span><input type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)} className="input mt-1" /></label>}
       </div>
 
-      {warn && <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{warn}</p>}
+      {warn && <p className="mt-3 rounded-lg border-2 border-[var(--ink)] bg-[var(--yellow)]/40 px-3 py-2 text-xs text-stone-900">{warn}</p>}
       <button disabled={!canSubmit || busy} className="btn btn-primary mt-4 w-full py-3 text-base">
         {phase === "upload" ? t(`上傳中 ${Math.round(progress ?? 0)}%`, `Uploading ${Math.round(progress ?? 0)}%`) : phase === "create" ? t("建立中…", "Creating…") : mode === "photos" ? t(`開始分析 ${photos.length ? `${photos.length} 張照片` : ""}`, `Analyze ${photos.length ? `${photos.length} photos` : ""}`) : t("開始分析", "Analyze")}
       </button>
-      {phase === "upload" && <div className="mt-2 h-1.5 overflow-hidden rounded bg-stone-100"><div className="h-full bg-orange-500 transition-all" style={{ width: `${progress ?? 0}%` }} /></div>}
+      {phase === "upload" && <div className="mt-2 h-2.5 overflow-hidden rounded-full border-2 border-[var(--ink)] bg-white"><div className="h-full bg-[var(--accent)] transition-all" style={{ width: `${progress ?? 0}%` }} /></div>}
       {sampleAvailable && mode === "video" && (
         <button type="button" onClick={useSample} disabled={busy} className="btn btn-ghost mt-2 w-full text-sm">{phase === "sample" ? t("建立中…", "Creating…") : t("沒有影片？用範例影片試試（8 件商品、80 秒）", "No video? Try the sample (8 products, 80 seconds)")}</button>
       )}

@@ -1,13 +1,29 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f7f4ee;
-  --fg: #1c1917;
+  /* Memphis 亮色系：奶油底、粗黑描邊、硬陰影、圓點底紋；橘色是 PanShop 主色，黃／青／紫當輔色 */
+  --bg: #fff6e5;
+  --fg: #111111;
   --card: #ffffff;
-  --accent: #ea580c;
+  --ink: #111111;
+  --accent: #ff7a1a;
+  --accent-hi: #ff9447;
+  --yellow: #ffd23f;
+  --teal: #2ec4b6;
+  --purple: #8338ec;
+  --pink: #ff5c8a;
+  --bw: 2.5px;
+  --shadow: 5px 5px 0 var(--ink);
+  --shadow-sm: 3px 3px 0 var(--ink);
 }
 html { font-family: var(--font-noto), ui-sans-serif, system-ui, "PingFang TC", sans-serif; }
-body { background: var(--bg); color: var(--fg); }
+body {
+  background-color: var(--bg);
+  background-image: radial-gradient(rgb(17 17 17 / 11%) 1.5px, transparent 1.6px);
+  background-size: 22px 22px;
+  color: var(--fg);
+}
+:focus-visible { outline: 3px solid var(--purple); outline-offset: 3px; }
 
 /* 商品卡「炸開」：從影片中央飛到格位 */
 @keyframes burst {
@@ -25,14 +41,39 @@ body { background: var(--bg); color: var(--fg); }
 
 /* 放進 components layer，讓 Tailwind 的 utility（例如 w-32）能覆蓋這些預設 */
 @layer components {
-  .card { background: var(--card); border: 1px solid rgb(231 229 228); border-radius: 14px; }
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: 10px; padding: .6rem 1rem; font-weight: 500; transition: background .15s, transform .05s; }
-  .btn:active { transform: translateY(1px); }
-  .btn-primary { background: var(--accent); color: white; }
-  .btn-primary:hover { background: #c2410c; }
-  .btn-primary:disabled { opacity: .5; }
-  .btn-ghost { background: white; border: 1px solid rgb(231 229 228); color: #292524; }
-  .btn-ghost:hover { background: #fafaf9; }
-  .input { width: 100%; border: 1px solid rgb(214 211 209); border-radius: 8px; padding: .45rem .6rem; background: white; }
-  .input:focus { outline: 2px solid #fdba74; outline-offset: 0; border-color: #fb923c; }
+  .card { background: var(--card); border: var(--bw) solid var(--ink); border-radius: 14px; box-shadow: var(--shadow); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border: var(--bw) solid var(--ink); border-radius: 12px; padding: .55rem 1rem; font-weight: 800; letter-spacing: .02em; box-shadow: var(--shadow-sm); transition: transform .12s, box-shadow .12s, background .15s; }
+  .btn:hover:not(:disabled) { transform: translate(1px, 1px); box-shadow: 2px 2px 0 var(--ink); }
+  .btn:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: none; }
+  .btn:disabled { opacity: .45; box-shadow: none; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: var(--ink); }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hi); }
+  .btn-ghost { background: white; color: var(--ink); }
+  .btn-ghost:hover:not(:disabled) { background: var(--yellow); }
+  .input { width: 100%; border: 2px solid var(--ink); border-radius: 10px; padding: .45rem .6rem; background: white; }
+  .input:focus { outline: 3px solid var(--purple); outline-offset: 1px; }
+  /* 標題強調：斜放的色塊 */
+  .mark { display: inline-block; padding: .02em .18em .08em; background: var(--yellow); border: var(--bw) solid var(--ink); transform: rotate(-1.2deg); line-height: 1.1; }
+  /* 小標籤（代碼、品類） */
+  .tag { display: inline-flex; align-items: center; border: 2px solid var(--ink); border-radius: 999px; padding: .05rem .55rem; font-weight: 700; background: white; }
+}
+
+/* ── 首頁動態 ───────────────────────────── */
+.reveal { opacity: 0; transform: translateY(26px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.9,.25,1.1); }
+.reveal-on { opacity: 1; transform: none; }
+.ps-float { animation: ps-float 5s ease-in-out infinite; }
+.ps-float-2 { animation: ps-float 6.5s ease-in-out -2s infinite reverse; }
+@keyframes ps-float { 0%,100% { translate: 0 0; rotate: 0deg; } 50% { translate: 0 -10px; rotate: 8deg; } }
+.ps-scan { animation: ps-scan 1.6s ease-in-out infinite alternate; }
+@keyframes ps-scan { from { top: 10%; } to { top: 88%; } }
+.ps-wave { animation: ps-wave .7s ease-in-out infinite alternate; transform-origin: bottom; }
+@keyframes ps-wave { from { transform: scaleY(.35); } to { transform: scaleY(1); } }
+.ps-marquee { animation: ps-marquee 28s linear infinite; }
+@keyframes ps-marquee { to { transform: translateX(-50%); } }
+.ps-tilt { transition: transform .25s ease, box-shadow .25s ease; }
+.ps-tilt:hover { transform: translate(-2px,-2px) rotate(-1deg); box-shadow: 8px 8px 0 var(--ink); }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .ps-float, .ps-float-2, .ps-scan, .ps-wave, .ps-marquee, .animate-bounce, .animate-pulse { animation: none; }
+  .ps-tilt:hover { transform: none; }
 }

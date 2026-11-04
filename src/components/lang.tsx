@@ -29,10 +29,10 @@ export function LangToggle({ className = "" }: { className?: string }) {
     router.refresh();
   };
   return (
-    <div className={`inline-flex overflow-hidden rounded-full border border-stone-300 text-xs ${className}`} role="group" aria-label="Language">
+    <div className={`inline-flex overflow-hidden rounded-full border-2 border-[var(--ink)] text-xs font-bold ${className}`} role="group" aria-label="Language">
       {(["zh", "en"] as const).map((l) => (
         <button key={l} type="button" onClick={() => set(l)} aria-pressed={lang === l}
-          className={`px-2.5 py-1 ${lang === l ? "bg-stone-900 text-white" : "bg-white text-stone-600 hover:bg-stone-100"}`}>
+          className={`px-2.5 py-1 ${lang === l ? "bg-[var(--ink)] text-white" : "bg-white text-stone-700 hover:bg-[var(--yellow)]"}`}>
           {l === "zh" ? "中" : "EN"}
         </button>
       ))}

@@ -14,7 +14,7 @@ export default async function JobsPage() {
       <h1 className="text-2xl font-bold">{t("我的掃描", "My scans")}</h1>
       <p className="mt-1 text-sm text-stone-500">{t("在這個瀏覽器建立的掃描。沒有帳號系統，換瀏覽器或清除 Cookie 就看不到了，請保留掃描網址。", "Scans created in this browser. There are no accounts: switching browsers or clearing cookies hides them, so keep each scan’s link.")}</p>
       <div className="card mt-6 divide-y divide-stone-100">
-        {list.length === 0 && <p className="p-6 text-sm text-stone-500">{t("還沒有掃描。", "No scans yet. ")}<Link href="/" className="underline">{t("上傳第一段影片", "Upload your first video")}</Link></p>}
+        {list.length === 0 && <p className="p-6 text-sm text-stone-500">{t("還沒有掃描。", "No scans yet. ")}<Link href="/new" className="underline">{t("上傳第一段影片", "Upload your first video")}</Link></p>}
         {list.map((j) => (
           <Link key={String(j._id)} href={`/jobs/${j.code}`} className="flex items-center gap-4 p-3 hover:bg-stone-50">
             <div className="h-14 w-20 shrink-0 overflow-hidden rounded-md bg-stone-100">{j.frames[0] && <img src={j.frames[0].url} alt="" className="h-full w-full object-cover" />}</div>

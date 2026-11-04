@@ -10,16 +10,16 @@ export function SiteHeader() {
   const t = useT();
   if (path?.startsWith("/s/")) return null;
   return (
-    <header className="sticky top-0 z-30 border-b border-stone-200/70 bg-[var(--bg)]/85 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2 font-bold tracking-tight">
-          <span aria-hidden className="inline-block h-6 w-6 rounded-md bg-gradient-to-br from-orange-500 to-amber-400" />
+    <header className="sticky top-0 z-30 border-b-[3px] border-[var(--ink)] bg-white">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
+        <Link href="/" className="flex items-center gap-2 text-lg font-black tracking-tight">
+          <span aria-hidden className="inline-block h-7 w-7 rounded-lg border-[2.5px] border-[var(--ink)] bg-[var(--accent)] shadow-[2px_2px_0_var(--ink)]" />
           PanShop
         </Link>
-        <nav className="flex items-center gap-3 text-sm text-stone-600 sm:gap-5">
+        <nav className="flex items-center gap-2 text-sm font-bold sm:gap-4">
           <LangToggle />
-          <Link href="/jobs" className="hover:text-stone-900">{t("我的掃描", "My scans")}</Link>
-          <Link href="/" className="rounded-full bg-stone-900 px-3 py-1.5 text-white hover:bg-stone-700">{t("新掃描", "New scan")}</Link>
+          <Link href="/jobs" className="rounded-full border-[2.5px] border-transparent px-2 py-1 hover:border-[var(--ink)] hover:bg-[var(--yellow)]">{t("我的掃描", "My scans")}</Link>
+          <Link href="/new" className="btn btn-primary px-3 py-1.5 text-sm">{t("新掃描", "New scan")}</Link>
         </nav>
       </div>
     </header>

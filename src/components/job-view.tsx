@@ -136,7 +136,7 @@ export function JobView({ code }: { code: string }) {
           <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             <div className="font-medium">{current ? t(`${current.label} 失敗`, `${current.label} failed`) : t("處理失敗", "Processing failed")}</div>
             <div className="mt-1 break-all text-xs">{stageError(current?.error, t, data.isAdmin)}</div>
-            {data.isAdmin ? <RetryButton jobId={job._id} stage={current?.key ?? "extract"} onDone={load} /> : <p className="mt-2 text-xs"><Link href="/" className="underline">{t("回首頁重新上傳", "Upload again")}</Link></p>}
+            {data.isAdmin ? <RetryButton jobId={job._id} stage={current?.key ?? "extract"} onDone={load} /> : <p className="mt-2 text-xs"><Link href="/new" className="underline">{t("重新上傳", "Upload again")}</Link></p>}
           </div>
         )}
       </section>

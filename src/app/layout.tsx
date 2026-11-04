@@ -5,7 +5,7 @@ import { LangProvider } from "@/components/lang";
 import { getLang } from "@/lib/i18n-server";
 import "./globals.css";
 
-const noto = Noto_Sans_TC({ subsets: ["latin"], weight: ["400", "500", "700"], variable: "--font-noto" });
+const noto = Noto_Sans_TC({ subsets: ["latin"], weight: ["400", "500", "700", "900"], variable: "--font-noto" });
 
 export const metadata: Metadata = {
   title: { default: "PanShop", template: "%s · PanShop" },
