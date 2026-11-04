@@ -21,7 +21,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const g = await guardItem(id);
   if (g instanceof Response) return g;
-  const limited = await checkTrial(await getLang(), { newJob: false });
+  const limited = await checkTrial(await getLang());
   if (limited) return Response.json({ error: limited.error }, { status: limited.status });
   const b = Body.safeParse(await req.json().catch(() => ({})));
   if (!b.success) return apiError("參數不對", "Invalid request", 400);

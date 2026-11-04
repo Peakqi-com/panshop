@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   const lang: Lang = b.lang ?? "zh";
   const t = makeT(lang);
   if (!checkUploadPasscode(b.passcode)) return Response.json({ error: t("通行碼不對", "Wrong passcode") }, { status: 403 });
-  const limited = await checkTrial(lang, { newJob: true });
+  const limited = await checkTrial(lang);
   if (limited) return Response.json({ error: limited.error }, { status: limited.status });
   const cfg = await settings.get();
   let videoUrl = b.sample ? (cfg.sampleVideoUrl || process.env.SAMPLE_VIDEO_URL) : b.videoUrl;

@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   }
 
   // 2. 其他提問：模型判斷意圖與回覆
-  const limited = await checkTrial(await getLang(), { newJob: false });
+  const limited = await checkTrial(await getLang());
   if (limited) return Response.json({ error: limited.error }, { status: limited.status });
   const menu = en
     ? list.map((i) => `${i.code}｜${i.title}｜${i.color}｜${i.price != null ? priceLabel(i.price, i.currency, true) : noPriceText(true)}`).join("\n")

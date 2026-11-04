@@ -39,7 +39,7 @@ export default async function NewScan() {
             ))}
           </ol>
         </div>
-        <UploadForm needPasscode={!!process.env.UPLOAD_PASSCODE} trialPerDay={cfg.trialJobsPerIp} sampleAvailable={!!(cfg.sampleVideoUrl || process.env.SAMPLE_VIDEO_URL)} maxVideoSec={cfg.maxVideoSec} maxReplaySec={cfg.maxReplaySec} maxUploadMb={cfg.maxUploadMb} maxPhotos={cfg.maxPhotos} />
+        <UploadForm needPasscode={!!process.env.UPLOAD_PASSCODE} sampleAvailable={!!(cfg.sampleVideoUrl || process.env.SAMPLE_VIDEO_URL)} maxVideoSec={cfg.maxVideoSec} maxReplaySec={cfg.maxReplaySec} maxUploadMb={cfg.maxUploadMb} maxPhotos={cfg.maxPhotos} />
       </section>
 
       {featured && (

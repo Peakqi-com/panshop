@@ -15,7 +15,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const g = await guardItem(id);
   if (g instanceof Response) return g;
-  const limited = await checkTrial(await getLang(), { newJob: false });
+  const limited = await checkTrial(await getLang());
   if (limited) return Response.json({ error: limited.error }, { status: limited.status });
   const it = await items.byId(id);
   if (!it?._id) return apiError("找不到", "Not found", 404);

@@ -130,7 +130,7 @@ export default async function Landing() {
               <span aria-hidden className="ps-float absolute left-[6%] top-[18%] h-10 w-10 rounded-full border-[3px] border-[var(--ink)] bg-[var(--yellow)]" />
               <span aria-hidden className="ps-float-2 absolute bottom-[14%] right-[8%] h-10 w-10 rotate-12 border-[3px] border-[var(--ink)] bg-[var(--teal)]" />
               <h2 className="text-3xl font-black sm:text-5xl"><span className="mark">{t("現在就掃一圈", "Pan your first shelf")}</span></h2>
-              <p className="mx-auto mt-4 max-w-xl font-bold">{cfg.trialJobsPerIp > 0 ? t(`不用註冊，每天可以免費掃 ${cfg.trialJobsPerIp} 次。沒有影片也可以用範例影片試。`, `No sign-up. ${cfg.trialJobsPerIp} free scans a day, and a sample video if you don't have one yet.`) : t("不用註冊，沒有影片也可以用範例影片試。", "No sign-up, and a sample video if you don't have one yet.")}</p>
+              <p className="mx-auto mt-4 max-w-xl font-bold">{t("不用註冊，免費試用。沒有影片也可以用範例影片試。", "No sign-up, free to try, and a sample video if you don't have one yet.")}</p>
               <div className="mt-6 flex flex-wrap justify-center gap-3">
                 <Link href="/new" className="btn bg-white px-6 py-3 text-base">{t("開始掃描", "Start a scan")} →</Link>
                 {show && <Link href={`/s/${show.code}`} className="btn btn-ghost px-6 py-3 text-base">{t("看範例可購買頁", "See a sample shop page")}</Link>}

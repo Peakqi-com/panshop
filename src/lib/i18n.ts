@@ -7,10 +7,9 @@ export const LANG_COOKIE = "lang";
 export type T = (zh: string, en: string) => string;
 export const makeT = (lang: Lang): T => (zh, en) => (lang === "en" ? en : zh);
 
-/** 有 cookie 用 cookie；沒有就看瀏覽器語言，中文用繁中，其他一律英文 */
-export function pickLang(cookie: string | undefined, acceptLanguage: string | null | undefined): Lang {
-  if (cookie === "zh" || cookie === "en") return cookie;
-  return /^\s*zh/i.test(acceptLanguage ?? "") ? "zh" : "en";
+/** 有 cookie 用 cookie（使用者切過語言）；沒有就預設英文 */
+export function pickLang(cookie: string | undefined): Lang {
+  return cookie === "zh" ? "zh" : "en";
 }
 
 /** 產出內容的語言（job.language）：英文介面建的掃描，品名、描述、短片都用英文 */

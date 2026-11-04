@@ -54,7 +54,6 @@ export function AppSettingsForm({ value }: { value: AppSettings }) {
         <label className="text-sm"><span className="font-medium">照片匯入張數上限</span><input name="maxPhotos" type="number" min={1} max={60} defaultValue={value.maxPhotos} className="input mt-1" /></label>
         <label className="text-sm sm:col-span-2"><span className="font-medium">範例影片網址</span><input name="sampleVideoUrl" defaultValue={value.sampleVideoUrl} placeholder="空白＝用環境變數 SAMPLE_VIDEO_URL" className="input mt-1 font-mono text-xs" /></label>
         <label className="text-sm sm:col-span-2"><span className="font-medium">首頁範例成果（掃描代碼）</span><input name="featuredJobCode" defaultValue={value.featuredJobCode} placeholder="例如 2edauk4btx；空白不顯示" className="input mt-1 font-mono text-xs" /></label>
-        <label className="text-sm"><span className="font-medium">公開試用：每個 IP 每天幾次（0＝不限）</span><input name="trialJobsPerIp" type="number" min={0} max={100} defaultValue={value.trialJobsPerIp} className="input mt-1" /></label>
         <label className="text-sm"><span className="font-medium">全站每天花費上限（美元，0＝不限）</span><input name="dailyBudgetUsd" type="number" min={0} max={1000} step="1" defaultValue={value.dailyBudgetUsd} className="input mt-1" /></label>
         <label className="text-sm sm:col-span-2"><span className="font-medium">首頁公告</span><input name="announcement" defaultValue={value.announcement} placeholder="空白不顯示" className="input mt-1" /></label>
         <label className="text-sm"><span className="font-medium">短片配音</span>

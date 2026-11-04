@@ -12,7 +12,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const job = await guardJob(id);
   if (job instanceof Response) return job;
-  const limited = await checkTrial(await getLang(), { newJob: false });
+  const limited = await checkTrial(await getLang());
   if (limited) return Response.json({ error: limited.error }, { status: limited.status });
   if (!["review", "done", "failed", "producing"].includes(job.status)) return apiError("還在處理中", "Still processing", 409);
   await items.confirmAll(job._id!);

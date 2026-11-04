@@ -14,7 +14,7 @@ const MODES: { id: Mode; label: [string, string]; hint: [string, string] }[] = [
   { id: "replay", label: ["直播回放", "Live replay"], hint: ["上傳直播回放檔，或貼可直接下載的影片網址；主播講到的商品會自動切出", "Upload a live-stream replay or paste a direct video link; every product the host shows is cut out automatically"] },
 ];
 
-export function UploadForm({ needPasscode, trialPerDay, sampleAvailable, maxVideoSec = 240, maxReplaySec = 600, maxUploadMb = 300, maxPhotos = 30 }: { needPasscode: boolean; trialPerDay?: number; sampleAvailable: boolean; maxVideoSec?: number; maxReplaySec?: number; maxUploadMb?: number; maxPhotos?: number }) {
+export function UploadForm({ needPasscode, sampleAvailable, maxVideoSec = 240, maxReplaySec = 600, maxUploadMb = 300, maxPhotos = 30 }: { needPasscode: boolean; sampleAvailable: boolean; maxVideoSec?: number; maxReplaySec?: number; maxUploadMb?: number; maxPhotos?: number }) {
   const router = useRouter();
   const t = useT();
   const lang = useLang();
@@ -189,7 +189,6 @@ export function UploadForm({ needPasscode, trialPerDay, sampleAvailable, maxVide
         {mode === "photos" && <><li>{t("・一張照片可以有多件商品，會各自切出。", "・A photo can hold several products; each is cut out separately.")}</li><li>{t("・同一件商品的不同角度照片會自動併成一件。", "・Different angles of the same product are merged into one item.")}</li></>}
         {mode === "replay" && <><li>{t("・主播拿起來講的商品會被切出，講到的價格自動帶入。", "・Products the host holds up are cut out, with the prices they mention.")}</li><li>{t("・回放越長處理越久，10 分鐘約需 8 到 12 分鐘。", "・Longer replays take longer: 10 minutes needs about 8 to 12 minutes.")}</li></>}
         <li>{t("・處理期間可以先離開，回「我的掃描」查看。", "・You can leave while it runs and come back via “My scans”.")}</li>
-        {trialPerDay ? <li>{t(`・公開試用：每個網路位址每天 ${trialPerDay} 次。`, `・Open trial: ${trialPerDay} scans per network address per day.`)}</li> : null}
       </ul>
     </form>
   );
