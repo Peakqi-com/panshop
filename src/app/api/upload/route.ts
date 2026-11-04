@@ -1,5 +1,6 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { checkUploadPasscode, isAdmin } from "@/lib/auth";
+import { guardItem } from "@/lib/owner";
 import { settings } from "@/repositories/settings";
 
 /** Blob 用戶端直傳：瀏覽器先來這裡換 token，再直接把影片送去 Blob，不經過函式的 4.5 MB 限制 */
@@ -15,8 +16,10 @@ export async function POST(req: Request) {
           if (!(await isAdmin())) throw new Error("請先登入後台");
           return { allowedContentTypes: ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4", "audio/x-m4a", "audio/aac"], maximumSizeInBytes: 30 * 1024 * 1024, addRandomSuffix: true, tokenPayload: JSON.stringify({}) };
         }
-        // 分鏡換圖：編輯面板和其他商品操作一樣不用通行碼，但只收圖片
+        // 分鏡換圖：要有這件商品的編輯權，只收圖片
         if (_pathname.startsWith("scenes/")) {
+          const g = await guardItem(_pathname.slice(7, 31));
+          if (g instanceof Response) throw new Error("只有建立這個掃描的瀏覽器可以上傳");
           return { allowedContentTypes: ["image/jpeg", "image/png", "image/webp"], maximumSizeInBytes: 20 * 1024 * 1024, addRandomSuffix: true, tokenPayload: JSON.stringify({}) };
         }
         const payload = clientPayload ? (JSON.parse(clientPayload) as { passcode?: string }) : {};

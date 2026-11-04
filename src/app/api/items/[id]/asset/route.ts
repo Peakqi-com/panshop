@@ -1,6 +1,6 @@
-import { ObjectId } from "mongodb";
 import { z } from "zod";
 import { items } from "@/repositories/items";
+import { guardItem } from "@/lib/owner";
 import { assets } from "@/repositories/assets";
 
 const Patch = z.object({
@@ -15,11 +15,15 @@ const Patch = z.object({
 /** 產出頁可編輯的文案欄位 */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  if (!ObjectId.isValid(id)) return Response.json({ error: "id 不對" }, { status: 400 });
+  const g = await guardItem(id);
+  if (g instanceof Response) return g;
   const p = Patch.safeParse(await req.json().catch(() => null));
   if (!p.success) return Response.json({ error: "欄位不對" }, { status: 400 });
   const it = await items.byId(id);
   if (!it?._id) return Response.json({ error: "not found" }, { status: 404 });
-  await assets.upsert(it._id, it.jobId, p.data);
+  const a = await assets.byItem(it._id);
+  // 卡片上改的開場一句同步到分鏡，短片實際讀的是分鏡
+  const set = p.data.hook != null && a?.storyboard ? { ...p.data, storyboard: { ...a.storyboard, hook: p.data.hook } } : p.data;
+  await assets.upsert(it._id, it.jobId, set);
   return Response.json({ ok: true });
 }

@@ -2,12 +2,14 @@ import Link from "next/link";
 import { fmtTime } from "@/lib/format";
 import { UploadForm } from "@/components/upload-form";
 import { jobs } from "@/repositories/jobs";
+import { myJobs } from "@/lib/owner";
 import { settings } from "@/repositories/settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [recent, cfg] = await Promise.all([jobs.list(6).catch(() => []), settings.get()]);
+  const [recent, cfg] = await Promise.all([myJobs(6).catch(() => []), settings.get()]);
+  const featured = cfg.featuredJobCode ? await jobs.byCode(cfg.featuredJobCode).catch(() => null) : null;
   return (
     <main className="mx-auto max-w-6xl px-4 pb-16 pt-12">
       {cfg.announcement && <p className="mb-6 rounded-lg border border-orange-200 bg-orange-50 px-4 py-2 text-sm text-orange-900">{cfg.announcement}</p>}
@@ -37,10 +39,20 @@ export default async function Home() {
         <UploadForm needPasscode={!!process.env.UPLOAD_PASSCODE} sampleAvailable={!!(cfg.sampleVideoUrl || process.env.SAMPLE_VIDEO_URL)} maxVideoSec={cfg.maxVideoSec} maxReplaySec={cfg.maxReplaySec} maxUploadMb={cfg.maxUploadMb} maxPhotos={cfg.maxPhotos} />
       </section>
 
+      {featured && (
+        <section className="mt-16">
+          <h2 className="text-lg font-semibold">看一個完成的範例</h2>
+          <p className="mt-1 text-sm text-stone-500">一段 {Math.round(featured.video.durationSec ?? 0)} 秒的影片，切出 {featured.metrics.itemCount ?? 0} 件商品，做好商品圖、Meta 目錄、可購買頁與每件一支短片。</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link href={`/jobs/${featured.code}`} className="btn btn-primary">看產出</Link>
+            <Link href={`/s/${featured.code}`} className="btn btn-ghost">看可購買頁</Link>
+          </div>
+        </section>
+      )}
       {recent.length > 0 && (
         <section className="mt-16">
           <div className="flex items-baseline justify-between">
-            <h2 className="text-lg font-semibold">最近的掃描</h2>
+            <h2 className="text-lg font-semibold">你最近的掃描</h2>
             <Link href="/jobs" className="text-sm text-stone-500 hover:text-stone-900">全部</Link>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

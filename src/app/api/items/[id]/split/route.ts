@@ -1,13 +1,14 @@
-import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/db";
 import { items } from "@/repositories/items";
+import { guardItem } from "@/lib/owner";
 import { tracks } from "@/repositories/tracks";
 import { ItemSchema, type Item } from "@/models/item";
 
 /** 把一件拆成多件：每段 track 各成一件；只有一段的不能拆 */
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  if (!ObjectId.isValid(id)) return Response.json({ error: "id 不對" }, { status: 400 });
+  const g = await guardItem(id);
+  if (g instanceof Response) return g;
   const it = await items.byId(id);
   if (!it?._id) return Response.json({ error: "not found" }, { status: 404 });
   if (it.trackIds.length < 2) return Response.json({ error: "這件只有一段影像，不能拆" }, { status: 409 });

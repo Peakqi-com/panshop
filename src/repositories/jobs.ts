@@ -17,14 +17,23 @@ export const jobs = {
   async byCode(code: string) {
     return (await col()).findOne({ code });
   },
+  async byCodes(codes: string[]) {
+    return (await col()).find({ code: { $in: codes } }).sort({ _id: -1 }).toArray();
+  },
   async list(limit = 50) {
     return (await col()).find({}).sort({ _id: -1 }).limit(limit).toArray();
   },
-  async listFiltered(opts: { status?: string; q?: string; limit?: number } = {}) {
+  async countFiltered(opts: { status?: string; q?: string } = {}) {
     const f: Record<string, unknown> = {};
     if (opts.status) f.status = opts.status;
     if (opts.q) f.$or = [{ code: opts.q }, { shopName: { $regex: opts.q, $options: "i" } }];
-    return (await col()).find(f).sort({ _id: -1 }).limit(opts.limit ?? 100).toArray();
+    return (await col()).countDocuments(f);
+  },
+  async listFiltered(opts: { status?: string; q?: string; limit?: number; skip?: number } = {}) {
+    const f: Record<string, unknown> = {};
+    if (opts.status) f.status = opts.status;
+    if (opts.q) f.$or = [{ code: opts.q }, { shopName: { $regex: opts.q, $options: "i" } }];
+    return (await col()).find(f).sort({ _id: -1 }).skip(opts.skip ?? 0).limit(opts.limit ?? 100).toArray();
   },
   async remove(id: string | ObjectId) {
     const db = await getDb();

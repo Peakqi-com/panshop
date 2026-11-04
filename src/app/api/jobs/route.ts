@@ -3,7 +3,8 @@ import { after } from "next/server";
 import { z } from "zod";
 import { jobs } from "@/repositories/jobs";
 import { triggerStage } from "@/lib/pipeline";
-import { checkUploadPasscode } from "@/lib/auth";
+import { checkUploadPasscode, isAdmin } from "@/lib/auth";
+import { issueEditToken } from "@/lib/owner";
 import { STYLES, DEFAULT_STYLE } from "@/lib/config";
 import { settings } from "@/repositories/settings";
 
@@ -40,8 +41,11 @@ export async function POST(req: Request) {
   } else if (source === "replay" && !/^https:\/\//.test(videoUrl)) {
     return Response.json({ error: "回放網址要是 https 開頭、可直接下載的影片檔" }, { status: 400 });
   }
+  const jobCode = code();
+  const editTokenHash = await issueEditToken(jobCode);
   const job = await jobs.create({
-    code: code(),
+    code: jobCode,
+    editTokenHash,
     status: "uploaded",
     shopName: b.shopName || (b.sample ? "範例：桌上八件" : ""),
     currency: b.currency,
@@ -58,6 +62,7 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
+  if (!(await isAdmin())) return Response.json({ error: "需要管理員登入" }, { status: 403 });
   const list = await jobs.list(30);
   return Response.json(list.map((j) => ({ id: String(j._id), code: j.code, status: j.status, source: j.source, createdAt: j.createdAt, itemCount: j.metrics.itemCount ?? null })));
 }

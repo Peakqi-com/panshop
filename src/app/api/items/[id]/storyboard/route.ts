@@ -3,6 +3,7 @@ import { z } from "zod";
 import { items } from "@/repositories/items";
 import { jobs } from "@/repositories/jobs";
 import { assets } from "@/repositories/assets";
+import { canEditJob } from "@/lib/owner";
 import { writeStoryboard, ensureSceneImages, generateSceneImage, rewriteSceneText, MOTIONS } from "@/lib/video/storyboard";
 
 export const maxDuration = 300;
@@ -32,12 +33,14 @@ async function load(id: string) {
   const it = await items.byId(id);
   if (!it?._id) return null;
   const [job, a] = await Promise.all([jobs.byId(it.jobId), assets.byItem(it._id)]);
-  return job?._id && a ? { it, job, a } : null;
+  if (!job?._id || !a) return null;
+  return (await canEditJob(job)) ? { it, job, a } : "deny" as const;
 }
 
 /** 存使用者改過的分鏡（不重新合成，合成走 regenerate-video） */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const ctx = await load((await params).id);
+  if (ctx === "deny") return Response.json({ error: "只有建立這個掃描的瀏覽器可以修改" }, { status: 403 });
   if (!ctx) return Response.json({ error: "還沒有產出資料" }, { status: 404 });
   const p = Patch.safeParse(await req.json().catch(() => null));
   if (!p.success) return Response.json({ error: `欄位不對：${p.error.issues[0]?.message ?? ""}` }, { status: 400 });
@@ -50,6 +53,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 /** 重寫整份分鏡，或替單一場產生新文字或新畫面。單場結果回給面板，由使用者決定要不要存 */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const ctx = await load((await params).id);
+  if (ctx === "deny") return Response.json({ error: "只有建立這個掃描的瀏覽器可以修改" }, { status: 403 });
   if (!ctx) return Response.json({ error: "還沒有產出資料" }, { status: 404 });
   const { it, job, a } = ctx;
   const p = Post.safeParse(await req.json().catch(() => null));

@@ -1,6 +1,6 @@
-import { ObjectId } from "mongodb";
 import { z } from "zod";
 import { items } from "@/repositories/items";
+import { guardItem } from "@/lib/owner";
 import { jobs } from "@/repositories/jobs";
 import { shootItem } from "@/lib/pipeline/stages/shoot";
 import { STYLES, type StyleId } from "@/lib/config";
@@ -16,7 +16,8 @@ const Body = z.object({
 /** 重做單件商品圖，可帶一句方向與風格 */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  if (!ObjectId.isValid(id)) return Response.json({ error: "id 不對" }, { status: 400 });
+  const g = await guardItem(id);
+  if (g instanceof Response) return g;
   const b = Body.safeParse(await req.json().catch(() => ({})));
   if (!b.success) return Response.json({ error: "參數不對" }, { status: 400 });
   const it = await items.byId(id);

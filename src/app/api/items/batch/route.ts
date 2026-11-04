@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 import { items } from "@/repositories/items";
+import { guardItems } from "@/lib/owner";
 
 const Body = z.object({
   ids: z.array(z.string()).min(1),
@@ -13,6 +14,8 @@ const Body = z.object({
 export async function POST(req: Request) {
   const b = Body.safeParse(await req.json().catch(() => null));
   if (!b.success) return Response.json({ error: "參數不對" }, { status: 400 });
+  const g = await guardItems(b.data.ids);
+  if (g instanceof Response) return g;
   let n = 0;
   for (const id of b.data.ids) {
     if (!ObjectId.isValid(id)) continue;

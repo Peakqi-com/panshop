@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { fmtTime } from "@/lib/format";
-import { jobs } from "@/repositories/jobs";
+import { myJobs } from "@/lib/owner";
 
 export const dynamic = "force-dynamic";
 const STATUS: Record<string, string> = { uploaded: "排隊中", processing: "分析中", review: "待確認", producing: "產出中", done: "完成", failed: "失敗" };
 
 export default async function JobsPage() {
-  const list = await jobs.list(50);
+  const list = await myJobs(50);
   return (
     <main className="mx-auto max-w-4xl px-4 py-10">
       <h1 className="text-2xl font-bold">我的掃描</h1>
+      <p className="mt-1 text-sm text-stone-500">在這個瀏覽器建立的掃描。沒有帳號系統，換瀏覽器或清除 Cookie 就看不到了，請保留掃描網址。</p>
       <div className="card mt-6 divide-y divide-stone-100">
         {list.length === 0 && <p className="p-6 text-sm text-stone-500">還沒有掃描。<Link href="/" className="underline">上傳第一段影片</Link></p>}
         {list.map((j) => (

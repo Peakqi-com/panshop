@@ -64,6 +64,12 @@ export const JobSchema = z.object({
     samFrames: z.number().optional(),
   }).default({}),
   catalogCsvUrl: z.string().url().optional(),
+  editTokenHash: z.string().optional(),            // 建立者瀏覽器 token 的雜湊，見 src/lib/owner.ts；舊資料沒有＝只有管理員能改
+  contact: z.object({                              // 買家下單去處，可購買頁用
+    instagram: z.string().max(40).default(""),
+    line: z.string().max(40).default(""),
+    phone: z.string().max(30).default(""),
+  }).optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
