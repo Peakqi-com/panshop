@@ -218,8 +218,8 @@ export function PanTheater({ show }: { show: Showcase | null }) {
               return (
                 <div key={c} className="flex items-center gap-1.5 transition-all duration-300" style={{ opacity: k < shownComments ? 1 : 0, transform: `translateX(${k < shownComments ? 0 : -16}px)` }}>
                   <span className="h-5 w-5 shrink-0 rounded-full border-2 border-[var(--ink)]" style={{ background: TONES[k % 3] }} />
-                  <span className="truncate rounded-xl border-2 border-[var(--ink)] bg-white px-2 py-0.5 text-[11px] font-bold sm:text-xs">{c}</span>
-                  {!parsed && <span className="shrink-0 rounded border border-[var(--ink)] bg-[var(--yellow)] px-1 text-[9px] font-bold">Spark Open</span>}
+                  <span className="whitespace-nowrap rounded-xl border-2 border-[var(--ink)] bg-white px-1.5 py-0.5 text-[10px] font-bold sm:px-2 sm:text-xs">{c}</span>
+                  {!parsed && <span className="shrink-0 whitespace-nowrap rounded border border-[var(--ink)] bg-[var(--yellow)] px-1 text-[9px] font-bold">Spark Open</span>}
                 </div>
               );
             })}
