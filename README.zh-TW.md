@@ -16,22 +16,27 @@ PanShop 是奇鋒國際（[PEAKQI](https://peakqi.com)，台北）參加 [Meta G
 
 ## 做什麼
 
-1. **掃**：手機慢慢掃過所有商品，邊拍邊說品名和價格。
-2. **切與去重**：SAM 3.1 找出每一件商品、跨影格追蹤，同一件實體只留一筆，出鏡再入鏡也不會重複算。
+**線上試用：** https://panshop-meta-hackathon.vercel.app
+
+1. **掃、匯入或回放**：手機慢慢掃過所有商品、邊拍邊說品名和價格；或丟一疊商品照片；或上傳直播回放。三個入口共用同一條管線。
+2. **切與去重**：SAM 3.1 找出每一件商品、跨影格追蹤，同一件實體只留一筆，出鏡再入鏡也不會重複算。照片走 SAM 的圖片模式，一張照片一次呼叫。
 3. **認**：Muse Spark 看每件商品最清楚的幾張裁圖，加上 Muse Voice Transcribe 轉寫的口述，產生品名、屬性、分類、價格與描述。
-4. **拍**：SAM 遮罩先切出透明去背，再由 Muse Image 以商品自己的裁圖為參考，生成三個棚拍角度（正面、四十五度、側面）與一張情境圖，風格由賣家選。
-5. **確認**：一張表。改個價格、刪掉不賣的，就好。時間軸顯示每件商品在鏡頭內的秒數，離開又回來的商品仍然只算一件。
-6. **開賣**：匯出 Meta Commerce Manager 目錄 CSV、打開可購買頁，每件商品都有一支 15 秒的直式形象廣告：鉤子、去背主角推近、三張賣點卡、價格與行動呼籲，口白用賣家掃拍時講這件商品的原聲，底下鋪合成音樂。品名、價格、文案、賣點可直接改，任何一件的商品圖或短片都能單獨重做。
+4. **確認**：一張表。改價格、合併或拆分、刪掉不賣的。時間軸顯示每件商品在鏡頭內的秒數，離開又回來的商品仍然只算一件。
+5. **拍**：Muse Spark 依每件商品自己的裁圖寫視覺簡報，Muse Image 生成三個棚拍角度（正面、四十五度、側面）與一張情境圖，再由 Muse Spark 逐張比對原品；不合格的帶著問題重生一次。
+6. **開賣**：匯出 Meta Commerce Manager 目錄 CSV；手機版可購買頁的下單按鈕直接帶顧客到賣家的 Instagram、LINE 或簡訊；每件商品一支 9:16 形象短片。
+7. **導短片**：Muse Spark 先把每支短片寫成 4 到 5 場的分鏡，包含用哪張圖、鏡頭運動、字幕，以及含語氣指令的旁白。合成時把棚拍圖去背放到風格背景上，加字幕、大標、價格與音樂，再混入旁白。賣家可以逐場改字、換圖、單場重寫文字或重生畫面、調順序、從後台曲庫選音樂，然後重新合成。
 
 ## 使用的 Meta 模型
 
 | 模型 | 負責 |
 |---|---|
 | SAM 3.1（`sam-3.1`） | 以名詞片語分割影片、跨影格追蹤每件商品；每件挑最佳角度裁圖並用遮罩去背 |
-| Muse Spark 1.3（`muse-spark-1.3`） | 品類列舉、裁圖比對去重、商品屬性、文案 |
+| Muse Spark 1.3（`muse-spark-1.3`） | 品類列舉、裁圖比對去重、商品屬性、文案、視覺簡報、商品圖品管、短片分鏡 |
 | Muse Voice Transcribe（`muse-voice-transcribe-1.0`） | 口述的品名與價格，附 turn 級時間戳 |
-| Muse Image（`muse-image-1.0`） | 棚拍圖、情境圖、短影片封面 |
+| Muse Image（`muse-image-1.0`） | 三角度棚拍圖、情境圖、9:16 分鏡場景圖，全部以商品自己的裁圖為參考 |
 | Muse Spark Open（開放權重，Baseten 託管） | 可購買頁的留言對商品與回覆草稿。*Built with Muse Spark Open.* |
+
+旁白配音是唯一不是 Meta 模型的部分，因為 Model API 沒有 Meta 的語音合成模型。這是選用功能：在 `/admin` 存了 Fish Audio 或 OpenAI 金鑰，分鏡旁白會照語氣指令念出來；沒有金鑰時，短片改用賣家掃拍時的原聲，或只有字幕。
 
 ## 管線怎麼跑
 
@@ -49,8 +54,9 @@ PanShop 是奇鋒國際（[PEAKQI](https://peakqi.com)，台北）參加 [Meta G
   │
   ▼  確認表與時間軸（人只確認一次）
   │
-  ├─ 7 shoot       Muse Image：三個棚拍角度加一張情境圖，參考商品自己的裁圖
-  └─ 8 render      文案、Meta 目錄 CSV、可購買頁、每件一支 15 秒形象廣告（canvas 逐格加 ffmpeg，賣家原聲加音樂）
+  ├─ 7 shoot       Muse Spark 視覺簡報 → Muse Image 三角度加情境 → Muse Spark 品管，不合格重生一次
+  └─ 8 render      文案、Meta 目錄 CSV、可購買頁；每件先由 Muse Spark 寫分鏡，缺的場景由 Muse Image 補，
+                   再用 canvas 逐格加 ffmpeg 合成，混入旁白與音樂
 ```
 
 每個 stage 各占一次雲端函式呼叫，狀態寫回 job，任何一個 stage 都能單獨重跑。SAM 吃的是 4 fps 代理檔，3 分鐘影片每個品類不到 750 格。
@@ -61,21 +67,31 @@ PanShop 是奇鋒國際（[PEAKQI](https://peakqi.com)，台北）參加 [Meta G
 - **資料**：MongoDB Atlas（jobs、tracks、items、assets、comments），官方 driver 加 zod schema 與薄 repository 層。媒體（代理影片、影格、裁圖、去背、商品圖、短影片）放 Vercel Blob。
 - **模型**：SAM 3.1、Muse Spark、Muse Voice Transcribe、Muse Image 走 Meta Model API；Muse Spark Open 走 Baseten 的 OpenAI 相容端點。
 - **金鑰**：模型金鑰在 `/admin` 填一次，AES-256-GCM 加密存在 MongoDB；環境變數只是備援。
+- **權限**：沒有帳號系統。建立掃描的瀏覽器會拿到一個隨機編輯 token（httpOnly cookie），資料庫只存它的 SHA-256 雜湊。所有會改資料或花模型額度的路由都檢查這個 token 或管理員登入，所以分享出去的掃描網址對其他人是唯讀（`src/lib/owner.ts`）。
+- **後台**：`/admin` 有每日成本總覽、工作列表（逐 stage 重跑與刪除）、存在資料庫的系統設定、加密金鑰、音樂曲庫、留言紀錄，以及逐一呼叫每個模型的健康檢查。
 
 ## 評測
 
-第一組基準：一段 81 秒的合成桌面掃描影片，8 件商品 3 個品類（3 個杯子、3 本筆記本、2 雙鞋），音軌有口述的品名與價格，鏡頭掃到底再掃回來，讓 4 件商品出鏡再入鏡。標準答案在 `eval/labels/synthetic.json`。真實影片拍好後會補上數字。
+repo 裡有兩段測試影片，較長那段的標準答案在 `eval/labels/synthetic.json`。
+
+**合成影片 81 秒，3 個品類 8 件。** 鏡頭會掃回去，讓 4 件商品離開又回到畫面；音軌口述品名與價格。
 
 | 指標 | 結果 |
 |---|---|
 | 去重後件數 | 8 件對 8 件，沒有幽靈件（4 件再入鏡的都併回去了） |
 | 品名與屬性正確率 | 8 之 8 |
 | 從口述帶入價格 | 8 之 8 |
-| 只看畫面 vs 畫面加口述的品名正確率 | 待測 |
-| 上傳到確認表的時間 | 約 4 分鐘（SAM 3.1 每個品類跑一次，各 13 到 18 秒） |
-| 每次上架 API 成本 | 到確認表約 $0.45，含商品圖與短影片約 $0.7 |
+| 上傳到確認表的時間 | 正式站約 4 分 15 秒（SAM 3.1 每個品類跑一次，各 13 到 18 秒） |
 
-同一段影片較早的版本跑出 10 件（兩段再入鏡沒併回、一本筆記本也被 `mug` 片語抓到）。修正就是管線裡寫的那幾條：在斷點切開 track、每條 track 做品類檢查、同時在畫面上的一定是不同件、命名後再做一輪合併。延遲與模型行為的量測見 `docs/api-notes.md`。
+**20 秒影片，3 個品類 3 件。** 2026-11-01 在正式站用目前的商品圖與短片流程完整跑一次：
+
+| 步驟 | 結果 |
+|---|---|
+| 上傳到確認表 | 2 分 26 秒，3 件品名與價格全對 |
+| 確認到完成 | 5 分 5 秒：12 張商品圖、3 支 17 到 18 秒短片 |
+| 模型總成本 | 0.46 美元 |
+
+8 件影片早期跑出 10 件（兩段再入鏡沒併回、一本筆記本也被 `mug` 抓到）。修法就是管線裡寫的：在空檔切開 track、每段 track 驗證品類、同時出現在畫面的一定是不同件、命名後再合併一次。實測延遲與模型行為見 `docs/api-notes.md`。
 
 ## 安裝
 
@@ -98,6 +114,8 @@ pnpm dev
 | `FFMPEG_PATH` | 本機 ffmpeg（選填），沒設就用 `ffmpeg-static` |
 | `NEXT_PUBLIC_SITE_URL` | 對外網址，stage 用它呼叫下一個 stage |
 
+CI 每次 push 都會跑：`pnpm typecheck`、`pnpm lint`、`pnpm test`（價格解析、語氣指令、分鏡 schema、去背的單元測試）與 `pnpm build`。
+
 模型煙霧測試，每個指令只打一次 Meta Model API：
 
 ```bash
@@ -115,10 +133,13 @@ src/app/api/             上傳 token、jobs、items、stage 執行、產出
 src/lib/meta.ts          Meta Model API 封裝（Spark JSON、SAM 3.1 串流、Files、Muse Image、Voice Transcribe）
 src/lib/baseten.ts       Muse Spark Open（Baseten）
 src/lib/pipeline/        stage 執行器與八個 stage
+src/lib/video/           分鏡、場景圖、去背、合成、配音、音樂
+src/lib/owner.ts         每個掃描的編輯權檢查
 src/lib/ffmpeg.ts        ffmpeg 工具（代理檔、影格、音軌；去背用 sharp）
-src/models/              zod schema：job、track、item、asset、comment
+src/models/              zod schema：job、track、item、asset、comment、music、settings
 src/repositories/        所有資料庫存取
 eval/                    煙霧測試、標註的測試影片與準確率腳本
+tests/                   單元測試（vitest）
 ```
 
 ## 現況與參賽聲明
@@ -127,13 +148,14 @@ eval/                    煙霧測試、標註的測試影片與準確率腳本
 - 本產品設計為我們既有、營運中的行銷內容 SaaS 的新模組。該產品只以連結接入，不包含在本 repo；本 repo 沒有任何既有程式碼或客戶素材。
 - Demo 影片拍的是我們自己家裡的物品，沒有第三方商品或品牌。
 - Instagram 與 WhatsApp 發布在藍圖中，不屬於本次送件範圍。目錄匯出採 Meta Commerce Manager 的 CSV 格式。
+- 短片旁白只有在設定金鑰時才使用第三方語音合成。其他所有理解與生成內容的部分都使用 Meta 模型。
 
 ## 藍圖
 
 - Instagram：以 Content Publishing API 發布 Reels；在有站內結帳的市場自動掛商品標籤；留言關鍵字自動私訊購買連結
 - WhatsApp：目錄同步與對話下單
 - 廣告：由生成的目錄直接建立 Advantage+ 目錄廣告草稿
-- 影片導購：讓既有影片與直播回放可購買，留言自動對上商品
+- 影片導購：大量直播回放的留言自動對上商品，並自動私訊回覆
 
 ## 團隊
 

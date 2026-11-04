@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "indexes": "tsx scripts/ensure-indexes.ts",
-    "smoke": "tsx eval/smoke/run.mts"
+    "smoke": "tsx eval/smoke/run.mts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@meta-sam/parser": "^0.1.0",
@@ -38,7 +39,8 @@
     "eslint-config-next": "16.4.3",
     "tailwindcss": "^4",
     "tsx": "^4.19.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "3.2.4"
   },
   "packageManager": "pnpm@10.15.1",
   "pnpm": {
