@@ -2,6 +2,7 @@ import { z } from "zod";
 import { items } from "@/repositories/items";
 import { guardItem } from "@/lib/owner";
 import { assets } from "@/repositories/assets";
+import { apiError } from "@/lib/api-error";
 
 const Patch = z.object({
   caption: z.string().max(2000).optional(),
@@ -18,9 +19,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const g = await guardItem(id);
   if (g instanceof Response) return g;
   const p = Patch.safeParse(await req.json().catch(() => null));
-  if (!p.success) return Response.json({ error: "欄位不對" }, { status: 400 });
+  if (!p.success) return apiError("欄位不對", "Invalid fields", 400);
   const it = await items.byId(id);
-  if (!it?._id) return Response.json({ error: "not found" }, { status: 404 });
+  if (!it?._id) return apiError("找不到", "Not found", 404);
   const a = await assets.byItem(it._id);
   // 卡片上改的開場一句同步到分鏡，短片實際讀的是分鏡
   const set = p.data.hook != null && a?.storyboard ? { ...p.data, storyboard: { ...a.storyboard, hook: p.data.hook } } : p.data;

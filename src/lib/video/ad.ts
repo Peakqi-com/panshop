@@ -176,7 +176,7 @@ export async function renderAd(input: AdInput): Promise<{ mp4: string; cover: st
     }
     ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
     ctx.fillStyle = p.fg; ctx.font = `500 50px ${FONT}`; titleLines.forEach((l, i) => ctx.fillText(l, W / 2, H * 0.57 + i * 62));
-    const shown = input.price != null ? Math.round(input.price * ease(local / 0.9)) : null;
+    const shown = input.price != null ? Math.round(input.price * ease(local / 0.9) * 100) / 100 : null;
     ctx.fillStyle = p.accent; ctx.font = `700 132px ${FONT}`;
     ctx.fillText(shown != null ? priceLabel(shown, input.currency, en) : noPriceText(en), W / 2, H * 0.70);
     const k3 = ease((local - 0.8) / 0.5);

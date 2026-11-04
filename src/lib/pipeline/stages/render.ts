@@ -21,7 +21,7 @@ import { resolveMusic } from "@/lib/video/pick-music";
 import { pickSentence, hasChinesePrice, chineseDigitsToArabic } from "@/lib/video/price-text";
 import { settings } from "@/repositories/settings";
 import { STYLES, type StyleId } from "@/lib/config";
-import { isEn, withLang, ctaText, noPriceText, priceLabel } from "@/lib/video/lang";
+import { isEn, withLang, ctaText, noPriceText, priceLabel, priceRule } from "@/lib/video/lang";
 
 const BUDGET_MS = 210_000;
 
@@ -80,6 +80,7 @@ async function writeCopy(job: Job, jobId: ObjectId, needCopy: Item[]) {
   const { data, usd } = await sparkJSON({
     schema: Copy, name: "copy", effort: "low", maxTokens: 9000,
     system: withLang(`你是台灣的社群小編，替小賣家寫商品貼文與短影片口白。語氣親切、具體、不浮誇，只用繁體中文、阿拉伯數字與常見標點，不夾雜其他語言。幣別 ${job.currency}。店名「${job.shopName || "本店"}」。只能寫畫面與資料裡看得到的事實：不得捏造認證、檢驗、產地、功效、規格數字，也不得自行加優惠、折扣、贈品、免運、限時。沒有價格就寫「價格請私訊」。`, isEn(job))
+      + priceRule(job)
       + (isEn(job) ? ` In English captions the call to action is "Comment <code> for the link" (use the item's code); with no price write "${noPriceText(true)}". Prices like ${priceLabel(1980, job.currency, true)}.` : ""),
     parts: [{ text: `請替以下每件商品各寫一份：\n${needCopy.map((i) => `- ${i.code}｜${i.title}｜${i.color} ${i.material}｜${i.price != null ? `${job.currency} ${i.price}` : "價格私訊"}｜${i.description}`).join("\n")}` }],
   });

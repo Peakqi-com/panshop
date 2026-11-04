@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { jobs } from "@/repositories/jobs";
 import { pendingStage, triggerStage } from "@/lib/pipeline";
+import { apiError } from "@/lib/api-error";
 
 export const maxDuration = 60;
 
@@ -11,7 +12,7 @@ export const maxDuration = 60;
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const job = await jobs.byId(id).catch(() => null);
-  if (!job?._id) return Response.json({ error: "not found" }, { status: 404 });
+  if (!job?._id) return apiError("找不到", "Not found", 404);
   const p = pendingStage(job);
   if (!p.stage) return Response.json({ kicked: null, running: p.running });
   const stage = p.stage;

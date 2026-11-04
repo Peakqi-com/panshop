@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import { z } from "zod";
 import { items } from "@/repositories/items";
 import { guardItems } from "@/lib/owner";
+import { apiError } from "@/lib/api-error";
 
 const Body = z.object({
   ids: z.array(z.string()).min(1),
@@ -13,7 +14,7 @@ const Body = z.object({
 /** 確認表的批次動作 */
 export async function POST(req: Request) {
   const b = Body.safeParse(await req.json().catch(() => null));
-  if (!b.success) return Response.json({ error: "參數不對" }, { status: 400 });
+  if (!b.success) return apiError("參數不對", "Invalid request", 400);
   const g = await guardItems(b.data.ids);
   if (g instanceof Response) return g;
   let n = 0;

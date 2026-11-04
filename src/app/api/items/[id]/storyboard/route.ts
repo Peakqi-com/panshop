@@ -6,6 +6,7 @@ import { assets } from "@/repositories/assets";
 import { canEditJob } from "@/lib/owner";
 import { isEn, ctaText } from "@/lib/video/lang";
 import { writeStoryboard, ensureSceneImages, generateSceneImage, rewriteSceneText, MOTIONS } from "@/lib/video/storyboard";
+import { apiError } from "@/lib/api-error";
 
 export const maxDuration = 300;
 
@@ -41,10 +42,10 @@ async function load(id: string) {
 /** 存使用者改過的分鏡（不重新合成，合成走 regenerate-video） */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const ctx = await load((await params).id);
-  if (ctx === "deny") return Response.json({ error: "只有建立這個掃描的瀏覽器可以修改" }, { status: 403 });
-  if (!ctx) return Response.json({ error: "還沒有產出資料" }, { status: 404 });
+  if (ctx === "deny") return apiError("只有建立這個掃描的瀏覽器可以修改", "Only the browser that created this scan can change it", 403);
+  if (!ctx) return apiError("還沒有產出資料", "Nothing has been produced yet", 404);
   const p = Patch.safeParse(await req.json().catch(() => null));
-  if (!p.success) return Response.json({ error: `欄位不對：${p.error.issues[0]?.message ?? ""}` }, { status: 400 });
+  if (!p.success) return apiError("欄位不對", "Invalid fields", 400);
   const prev = ctx.a.storyboard;
   const storyboard = { ...prev, cta: prev?.cta ?? ctaText(ctx.it.code, isEn(ctx.job)), hook: p.data.hook, music: p.data.music ?? prev?.music, scenes: p.data.scenes.map((s, i) => ({ ...s, sceneNo: i + 1 })) };
   await assets.upsert(ctx.it._id!, ctx.job._id!, { storyboard });
@@ -54,11 +55,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 /** 重寫整份分鏡，或替單一場產生新文字或新畫面。單場結果回給面板，由使用者決定要不要存 */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const ctx = await load((await params).id);
-  if (ctx === "deny") return Response.json({ error: "只有建立這個掃描的瀏覽器可以修改" }, { status: 403 });
-  if (!ctx) return Response.json({ error: "還沒有產出資料" }, { status: 404 });
+  if (ctx === "deny") return apiError("只有建立這個掃描的瀏覽器可以修改", "Only the browser that created this scan can change it", 403);
+  if (!ctx) return apiError("還沒有產出資料", "Nothing has been produced yet", 404);
   const { it, job, a } = ctx;
   const p = Post.safeParse(await req.json().catch(() => null));
-  if (!p.success) return Response.json({ error: "欄位不對" }, { status: 400 });
+  if (!p.success) return apiError("欄位不對", "Invalid fields", 400);
   const gallery = a.storyboard?.gallery ?? [];
   try {
     if (p.data.action === "rewrite") {
@@ -69,7 +70,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       await jobs.addCost(job._id!, w.usd + usd);
       return Response.json({ ok: true, storyboard });
     }
-    if (!a.storyboard) return Response.json({ error: "還沒有分鏡" }, { status: 409 });
+    if (!a.storyboard) return apiError("還沒有分鏡", "There is no storyboard yet", 409);
     const keep = (url: string) => assets.upsert(it._id!, job._id!, { storyboard: { ...a.storyboard!, gallery: [url, ...gallery.filter((u) => u !== url)].slice(0, 24) } });
     if (p.data.action === "add-image") {
       await keep(p.data.url);

@@ -24,3 +24,17 @@ export const STAGE_LABEL_EN: Record<string, string> = { extract: "Read video", d
 export const STYLE_LABEL_EN: Record<string, string> = { lifestyle: "Lifestyle", minimal: "Minimal", natural: "Natural", luxury: "Premium", cute: "Cute & friendly", promo: "Promo" };
 export const SHOT_LABEL_EN: Record<string, string> = { front: "Front", threeQuarter: "45°", side: "Side", lifestyle: "Lifestyle" };
 export const JOB_STATUS: Record<string, [string, string]> = { uploaded: ["排隊中", "Queued"], processing: ["分析中", "Analyzing"], review: ["待確認", "Needs review"], producing: ["產出中", "Producing"], done: ["完成", "Done"], failed: ["失敗", "Failed"] };
+
+/** 可選幣別：台幣與美元 */
+export const CURRENCIES = ["TWD", "USD"] as const;
+export type Currency = (typeof CURRENCIES)[number];
+export const defaultCurrency = (lang: Lang): Currency => (lang === "en" ? "USD" : "TWD");
+export const CURRENCY_LABEL: Record<string, [string, string]> = { TWD: ["新台幣 NT$", "Taiwan dollar (NT$)"], USD: ["美元 US$", "US dollar ($)"] };
+
+/** 全站唯一的價格寫法：介面、可購買頁、短片、文案都用這個，台幣 NT$1,980、美元 $19.80 */
+export function fmtPrice(price: number, currency: string): string {
+  const whole = Number.isInteger(price);
+  if (currency === "USD") return `$${price.toLocaleString("en-US", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 })}`;
+  if (currency === "TWD") return `NT$${price.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  return `${currency} ${price.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+}

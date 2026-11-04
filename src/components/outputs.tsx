@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtPrice } from "@/lib/i18n";
 import { useState } from "react";
 import type { JobPayload, ItemRow, AssetRow } from "./job-view";
 import { Lightbox, type LightboxImage } from "./lightbox";
@@ -150,7 +151,7 @@ function ItemCard({ canEdit, onStoryboard, item: it, asset: a, producing, jobSty
         {hero ? <img src={hero} alt="" className="h-full w-full object-contain transition hover:scale-[1.02]" /> : <div className="skeleton h-full w-full" />}
       </button>
       <div className="p-3">
-        <div className="flex items-baseline justify-between"><span className="font-mono text-xs text-stone-400">{it.code} · {it.category}</span><span className="font-semibold">{it.price != null ? `${currency} ${it.price.toLocaleString()}` : t("未定價", "No price")}</span></div>
+        <div className="flex items-baseline justify-between"><span className="font-mono text-xs text-stone-400">{it.code} · {it.category}</span><span className="font-semibold">{it.price != null ? fmtPrice(it.price, currency) : t("未定價", "No price")}</span></div>
         <h3 className="mt-1 font-medium leading-snug">{it.title}</h3>
         <div className="mt-2 flex gap-1">
           {images.slice(0, 6).map((im, k) => <button key={im.url} onClick={() => setLb(k)} title={im.label} className={`h-11 w-11 overflow-hidden rounded-md ring-1 ${im.url === hero ? "ring-2 ring-orange-400" : "ring-stone-200"}`}><img src={im.url} alt="" className="h-full w-full object-cover" /></button>)}

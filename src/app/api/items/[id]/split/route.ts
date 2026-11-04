@@ -3,6 +3,7 @@ import { items } from "@/repositories/items";
 import { guardItem } from "@/lib/owner";
 import { tracks } from "@/repositories/tracks";
 import { ItemSchema, type Item } from "@/models/item";
+import { apiError } from "@/lib/api-error";
 
 /** 把一件拆成多件：每段 track 各成一件；只有一段的不能拆 */
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -10,8 +11,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const g = await guardItem(id);
   if (g instanceof Response) return g;
   const it = await items.byId(id);
-  if (!it?._id) return Response.json({ error: "not found" }, { status: 404 });
-  if (it.trackIds.length < 2) return Response.json({ error: "這件只有一段影像，不能拆" }, { status: 409 });
+  if (!it?._id) return apiError("找不到", "Not found", 404);
+  if (it.trackIds.length < 2) return apiError("這件只有一段影像，不能拆", "This item has only one clip, so it can’t be split", 409);
   const all = await tracks.forJob(it.jobId);
   const mine = it.trackIds.map((tid) => all.find((t) => String(t._id) === String(tid))).filter(Boolean);
   const siblings = await items.forJob(it.jobId, { includeDeleted: true });

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { STYLES, DEFAULT_STYLE, type StyleId } from "@/lib/config";
 import { useT, useLang } from "@/components/lang";
-import { STYLE_LABEL_EN } from "@/lib/i18n";
+import { STYLE_LABEL_EN, CURRENCIES, CURRENCY_LABEL, defaultCurrency, type Currency } from "@/lib/i18n";
 
 type Mode = "video" | "photos" | "replay";
 const MODES: { id: Mode; label: [string, string]; hint: [string, string] }[] = [
@@ -25,6 +25,8 @@ export function UploadForm({ needPasscode, trialPerDay, sampleAvailable, maxVide
   const [shopName, setShopName] = useState("");
   const [passcode, setPasscode] = useState("");
   const [style, setStyle] = useState<StyleId>(DEFAULT_STYLE);
+  const [currencyPick, setCurrency] = useState<Currency | null>(null);
+  const currency = currencyPick ?? defaultCurrency(lang);
   const [progress, setProgress] = useState<number | null>(null);
   const [phase, setPhase] = useState<"idle" | "upload" | "create" | "sample">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +38,7 @@ export function UploadForm({ needPasscode, trialPerDay, sampleAvailable, maxVide
 
   async function createJob(body: Record<string, unknown>, sample = false) {
     setPhase(sample ? "sample" : "create");
-    const r = await fetch("/api/jobs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, shopName, passcode, style, lang }) });
+    const r = await fetch("/api/jobs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, shopName, passcode, style, lang, currency }) });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error ?? t("建立失敗", "Could not create the scan"));
     router.push(`/jobs/${j.code}`);
@@ -166,6 +168,9 @@ export function UploadForm({ needPasscode, trialPerDay, sampleAvailable, maxVide
         <label className="block text-sm"><span className="font-medium">{t("店名（選填）", "Shop name (optional)")}</span><input value={shopName} onChange={(e) => setShopName(e.target.value)} className="input mt-1" placeholder={t("例如 小花選物", "e.g. Daisy Goods")} /></label>
         <label className="block text-sm"><span className="font-medium">{t("商品圖風格", "Photo style")}</span>
           <select value={style} onChange={(e) => setStyle(e.target.value as StyleId)} className="input mt-1">{(Object.keys(STYLES) as StyleId[]).map((k) => <option key={k} value={k}>{lang === "en" ? STYLE_LABEL_EN[k] ?? STYLES[k].label : STYLES[k].label}</option>)}</select>
+        </label>
+        <label className="block text-sm"><span className="font-medium">{t("幣別", "Currency")}</span>
+          <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className="input mt-1">{CURRENCIES.map((c) => <option key={c} value={c}>{t(...CURRENCY_LABEL[c])}</option>)}</select>
         </label>
         {needPasscode && <label className="block text-sm"><span className="font-medium">{t("通行碼", "Passcode")}</span><input type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)} className="input mt-1" /></label>}
       </div>

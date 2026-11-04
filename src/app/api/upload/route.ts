@@ -2,10 +2,12 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { checkUploadPasscode, isAdmin } from "@/lib/auth";
 import { guardItem } from "@/lib/owner";
 import { settings } from "@/repositories/settings";
+import { getT } from "@/lib/i18n-server";
 
 /** Blob 用戶端直傳：瀏覽器先來這裡換 token，再直接把影片送去 Blob，不經過函式的 4.5 MB 限制 */
 export async function POST(req: Request) {
   const body = (await req.json()) as HandleUploadBody;
+  const t = await getT();
   try {
     const json = await handleUpload({
       body,
@@ -13,17 +15,17 @@ export async function POST(req: Request) {
       onBeforeGenerateToken: async (_pathname, clientPayload) => {
         // 曲庫音樂只有管理員能傳
         if (_pathname.startsWith("music/")) {
-          if (!(await isAdmin())) throw new Error("請先登入後台");
+          if (!(await isAdmin())) throw new Error(t("請先登入後台", "Please sign in to /admin first"));
           return { allowedContentTypes: ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4", "audio/x-m4a", "audio/aac"], maximumSizeInBytes: 30 * 1024 * 1024, addRandomSuffix: true, tokenPayload: JSON.stringify({}) };
         }
         // 分鏡換圖：要有這件商品的編輯權，只收圖片
         if (_pathname.startsWith("scenes/")) {
           const g = await guardItem(_pathname.slice(7, 31));
-          if (g instanceof Response) throw new Error("只有建立這個掃描的瀏覽器可以上傳");
+          if (g instanceof Response) throw new Error(t("只有建立這個掃描的瀏覽器可以上傳", "Only the browser that created this scan can upload here"));
           return { allowedContentTypes: ["image/jpeg", "image/png", "image/webp"], maximumSizeInBytes: 20 * 1024 * 1024, addRandomSuffix: true, tokenPayload: JSON.stringify({}) };
         }
         const payload = clientPayload ? (JSON.parse(clientPayload) as { passcode?: string }) : {};
-        if (!checkUploadPasscode(payload.passcode)) throw new Error("上傳通行碼不對");
+        if (!checkUploadPasscode(payload.passcode)) throw new Error(t("上傳通行碼不對", "Wrong upload passcode"));
         const { maxUploadMb } = await settings.get();
         const isImage = /\.(jpe?g|png|webp|heic)$/i.test(_pathname);
         return {

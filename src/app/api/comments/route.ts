@@ -7,6 +7,7 @@ import { sparkOpenChat, extractJSON } from "@/lib/baseten";
 import { sparkJSON } from "@/lib/meta";
 import { settings } from "@/repositories/settings";
 import { isEn, priceLabel, noPriceText } from "@/lib/video/lang";
+import { apiError } from "@/lib/api-error";
 
 const Body = z.object({ jobId: z.string(), text: z.string().min(1).max(300) });
 const Out = z.object({ intent: z.enum(["price", "stock", "spec", "buy", "other"]), itemCode: z.string().nullable(), reply: z.string() });
@@ -14,9 +15,9 @@ const Out = z.object({ intent: z.enum(["price", "stock", "spec", "buy", "other"]
 /** Demo：留言對商品。先走開放權重 Muse Spark Open（Baseten），失敗退回 Muse Spark 1.3 */
 export async function POST(req: Request) {
   const p = Body.safeParse(await req.json().catch(() => null));
-  if (!p.success) return Response.json({ error: "參數不對" }, { status: 400 });
+  if (!p.success) return apiError("參數不對", "Invalid request", 400);
   const job = ObjectId.isValid(p.data.jobId) ? await jobs.byId(p.data.jobId) : await jobs.byCode(p.data.jobId);
-  if (!job?._id) return Response.json({ error: "not found" }, { status: 404 });
+  if (!job?._id) return apiError("找不到", "Not found", 404);
   const list = (await itemRepo.forJob(job._id)).filter((i) => i.status !== "deleted");
   const en = isEn(job);
   const menu = en

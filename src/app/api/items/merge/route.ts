@@ -2,15 +2,16 @@ import { ObjectId } from "mongodb";
 import { z } from "zod";
 import { items } from "@/repositories/items";
 import { guardItems } from "@/lib/owner";
+import { apiError } from "@/lib/api-error";
 
 /** 把多件合併成一件：留信心最高的那件，track 併過去，其餘標記刪除 */
 export async function POST(req: Request) {
   const b = z.object({ ids: z.array(z.string()).min(2) }).safeParse(await req.json().catch(() => null));
-  if (!b.success) return Response.json({ error: "至少選兩件" }, { status: 400 });
+  if (!b.success) return apiError("至少選兩件", "Select at least two items", 400);
   const g = await guardItems(b.data.ids);
   if (g instanceof Response) return g;
   const docs = (await Promise.all(b.data.ids.filter((id) => ObjectId.isValid(id)).map((id) => items.byId(id)))).filter(Boolean);
-  if (docs.length < 2) return Response.json({ error: "找不到商品" }, { status: 404 });
+  if (docs.length < 2) return apiError("找不到商品", "Items not found", 404);
   const keep = [...docs].sort((a, b2) => b2!.confidence.overall - a!.confidence.overall)[0]!;
   const rest = docs.filter((d) => String(d!._id) !== String(keep._id));
   await items.setFields(keep._id!, {

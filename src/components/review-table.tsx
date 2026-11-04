@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtPrice, CURRENCIES, CURRENCY_LABEL } from "@/lib/i18n";
 import { useState } from "react";
 import type { JobPayload, ItemRow } from "./job-view";
 import { useT } from "@/components/lang";
@@ -45,7 +46,17 @@ export function ReviewTable({ data, onChange }: { data: JobPayload; onChange: ()
   return (
     <section className="mt-10">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold">{t("確認表", "Review table")}</h2>
+        <h2 className="flex items-center gap-3 text-lg font-semibold">{t("確認表", "Review table")}
+          {editable && (
+            <select aria-label={t("幣別", "Currency")} value={data.job.currency} disabled={busy} onChange={async (e) => {
+              const r = await fetch(`/api/jobs/${data.job._id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ currency: e.target.value }) });
+              if (!r.ok) say((await r.json().catch(() => ({}))).error ?? t("失敗", "Failed"));
+              onChange();
+            }} className="input w-auto py-1 text-xs font-normal">
+              {CURRENCIES.map((c) => <option key={c} value={c}>{t(...CURRENCY_LABEL[c])}</option>)}
+            </select>
+          )}
+        </h2>
         <p className="text-sm text-stone-500">
           {editable ? <>{t("只要確認一次。", "One check and you're done. ")}{low > 0 && <span className="text-amber-700">{t(`${low} 件信心較低（黃底）`, `${low} low-confidence (yellow)`)}</span>}{low > 0 && noPrice > 0 && t("，", ", ")}{noPrice > 0 && <span>{t(`${noPrice} 件沒有價格`, `${noPrice} without a price`)}</span>}</> : t("已確認", "Confirmed")}
         </p>
@@ -70,7 +81,7 @@ export function ReviewTable({ data, onChange }: { data: JobPayload; onChange: ()
       <div className="card mt-3 overflow-x-auto">
         <table className="w-full min-w-[760px] text-sm">
           <thead className="bg-stone-50 text-left text-xs text-stone-500">
-            <tr>{editable && <th className="p-3"><input type="checkbox" checked={sel.size === items.length && items.length > 0} onChange={(e) => setSel(e.target.checked ? new Set(items.map((i) => i._id)) : new Set())} /></th>}<th className="p-3">{t("商品", "Item")}</th><th className="p-3">{t("品名與描述", "Name & description")}</th><th className="p-3">{t("顏色／材質", "Color / material")}</th><th className="p-3 text-right">{t("價格", "Price")} ({job.currency})</th><th className="p-3">{t("依據", "Evidence")}</th><th className="p-3"></th></tr>
+            <tr>{editable && <th className="p-3"><input type="checkbox" checked={sel.size === items.length && items.length > 0} onChange={(e) => setSel(e.target.checked ? new Set(items.map((i) => i._id)) : new Set())} /></th>}<th className="p-3">{t("商品", "Item")}</th><th className="p-3">{t("品名與描述", "Name & description")}</th><th className="p-3">{t("顏色／材質", "Color / material")}</th><th className="p-3 text-right">{t("價格", "Price")} <span className="font-normal text-stone-400">{data.job.currency}</span> ({job.currency})</th><th className="p-3">{t("依據", "Evidence")}</th><th className="p-3"></th></tr>
           </thead>
           <tbody>
             {items.map((it) => <Row key={it._id} item={it} editable={editable} categories={categories} selected={sel.has(it._id)} onToggle={() => toggle(it._id)} onChange={onChange} say={say} />)}
@@ -164,7 +175,7 @@ function Row({ item, editable, categories, selected, onToggle, onChange, say }: 
       <td className="p-3 text-right">
         {editable ? (
           <input value={price} inputMode="decimal" onChange={(e) => setPrice(e.target.value)} onBlur={() => (price === "" ? null : Number(price)) !== item.price && save({ price: price === "" ? null : Number(price) })} className="input w-24 text-right" placeholder={t("未定", "TBD")} />
-        ) : item.price != null ? item.price.toLocaleString() : <span className="text-stone-400">{t("未定", "TBD")}</span>}
+        ) : item.price != null ? fmtPrice(item.price, item.currency) : <span className="text-stone-400">{t("未定", "TBD")}</span>}
       </td>
       <td className="p-3 text-xs text-stone-500">
         {item.sources.speech ? <span className="rounded bg-orange-100 px-1.5 py-0.5 text-orange-800" title={item.speechEvidence}>{t("畫面＋口述", "Vision + speech")}</span> : <span className="rounded bg-stone-100 px-1.5 py-0.5">{t("畫面", "Vision")}</span>}

@@ -1,6 +1,7 @@
 import { jobs } from "@/repositories/jobs";
 import { items as itemRepo } from "@/repositories/items";
 import { assets as assetRepo } from "@/repositories/assets";
+import { getT } from "@/lib/i18n-server";
 
 const COLS = ["id", "title", "description", "availability", "condition", "price", "link", "image_link", "additional_image_link", "brand", "google_product_category", "color", "material"];
 const cell = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
@@ -9,7 +10,7 @@ const cell = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""').replace(/\r
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const job = await jobs.byId(id);
-  if (!job?._id) return new Response("not found", { status: 404 });
+  if (!job?._id) return new Response((await getT())("找不到這個掃描", "Scan not found"), { status: 404 });
   const [list, ass] = await Promise.all([itemRepo.forJob(job._id), assetRepo.forJob(job._id)]);
   const byItem = new Map(ass.map((a) => [String(a.itemId), a]));
   const origin = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;

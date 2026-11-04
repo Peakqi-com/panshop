@@ -6,6 +6,7 @@ import { getLang } from "@/lib/i18n-server";
 import { jobs } from "@/repositories/jobs";
 import { shootItem } from "@/lib/pipeline/stages/shoot";
 import { STYLES, type StyleId } from "@/lib/config";
+import { apiError } from "@/lib/api-error";
 
 export const maxDuration = 180;
 
@@ -23,11 +24,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const limited = await checkTrial(await getLang(), { newJob: false });
   if (limited) return Response.json({ error: limited.error }, { status: limited.status });
   const b = Body.safeParse(await req.json().catch(() => ({})));
-  if (!b.success) return Response.json({ error: "參數不對" }, { status: 400 });
+  if (!b.success) return apiError("參數不對", "Invalid request", 400);
   const it = await items.byId(id);
-  if (!it?._id) return Response.json({ error: "not found" }, { status: 404 });
+  if (!it?._id) return apiError("找不到", "Not found", 404);
   const job = await jobs.byId(it.jobId);
-  if (!job?._id) return Response.json({ error: "job not found" }, { status: 404 });
+  if (!job?._id) return apiError("找不到", "Not found", 404);
   const style = b.data.style && b.data.style in STYLES ? (b.data.style as StyleId) : undefined;
   const r = await shootItem(job, it, { which: b.data.which, hint: b.data.hint?.trim() || undefined, style, variation: Math.floor(Math.random() * 6), log: (m) => console.log(`[${job.code}][regen] ${m}`) });
   await jobs.addCost(job._id, r.usd);

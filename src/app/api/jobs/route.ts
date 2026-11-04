@@ -8,7 +8,7 @@ import { issueEditToken } from "@/lib/owner";
 import { STYLES, DEFAULT_STYLE } from "@/lib/config";
 import { settings } from "@/repositories/settings";
 import { checkTrial, clientIpHash } from "@/lib/trial";
-import { jobLanguage, makeT, type Lang } from "@/lib/i18n";
+import { jobLanguage, makeT, defaultCurrency, type Lang } from "@/lib/i18n";
 
 const code = customAlphabet("abcdefghjkmnpqrstuvwxyz23456789", 10);
 
@@ -20,7 +20,7 @@ const Body = z.object({
   fileName: z.string().optional(),
   bytes: z.number().optional(),
   shopName: z.string().max(60).default(""),
-  currency: z.string().max(5).default("TWD"),
+  currency: z.enum(["TWD", "USD"]).optional(),
   style: z.string().optional(),
   passcode: z.string().optional(),
   lang: z.enum(["zh", "en"]).optional(),
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     ipHash: await clientIpHash(),
     status: "uploaded",
     shopName: b.shopName || (b.sample ? t("範例：桌上八件", "Sample: eight things on a desk") : ""),
-    currency: b.currency,
+    currency: b.currency ?? defaultCurrency(lang),
     language: jobLanguage(lang),
     style: b.style && b.style in STYLES ? b.style : (cfg.defaultStyle in STYLES ? cfg.defaultStyle : DEFAULT_STYLE),
     source,

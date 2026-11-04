@@ -24,7 +24,9 @@ describe("wrapText", () => {
 describe("lang helpers", () => {
   it("價格寫法", () => {
     expect(priceLabel(1980, "TWD", true)).toBe("NT$1,980");
-    expect(priceLabel(1980, "TWD", false)).toBe("TWD 1,980");
+    expect(priceLabel(1980, "TWD", false)).toBe("NT$1,980");
+    expect(priceLabel(19.8, "USD", true)).toBe("$19.80");
+    expect(priceLabel(20, "USD", true)).toBe("$20");
   });
   it("CTA 與無價格", () => {
     expect(ctaText("A3", true)).toBe("Comment A3 for the link");

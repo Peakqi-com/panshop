@@ -149,7 +149,7 @@ export async function renderAdV2(input: AdV2Input): Promise<{ mp4: string; cover
     if (onPhoto) { const g = ctx.createLinearGradient(0, H * 0.45, 0, H); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(0.4, "rgba(0,0,0,0.6)"); g.addColorStop(1, "rgba(0,0,0,0.75)"); ctx.fillStyle = g; ctx.fillRect(0, H * 0.45, W, H * 0.55); }
     ctx.globalAlpha = k;
     ctx.fillStyle = onPhoto ? "#fff" : p.fg; ctx.font = `500 50px ${FONT}`; wrap(ctx, input.title, W - 200, 2).forEach((l, i) => ctx.fillText(l, W / 2, H * 0.60 + i * 62));
-    const shown = input.price != null ? Math.round(input.price * ease(local / 1.0)) : null;
+    const shown = input.price != null ? Math.round(input.price * ease(local / 1.0) * 100) / 100 : null;
     ctx.fillStyle = onPhoto ? "#fff" : p.accent; ctx.font = `700 124px ${FONT}`;
     ctx.fillText(shown != null ? priceLabel(shown, input.currency, !!input.en) : noPriceText(!!input.en), W / 2, H * 0.73);
     const k2 = ease((local - 0.6) / 0.5); ctx.globalAlpha = k2;

@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useT, useLang } from "@/components/lang";
-import { fmtTimeL, STAGE_LABEL_EN } from "@/lib/i18n";
+import { fmtTimeL, STAGE_LABEL_EN, fmtPrice } from "@/lib/i18n";
+import { stageNote, stageError } from "@/lib/stage-text";
 import { STAGES, STAGE_LABEL, AUTO_STAGES, PRODUCE_STAGES, estimateRemaining, type Stage } from "@/lib/stages";
 import { ReviewTable } from "./review-table";
 import { Timeline } from "./timeline";
@@ -116,7 +118,7 @@ export function JobView({ code }: { code: string }) {
       <section className="card mt-6 p-4">
         <ol className="grid grid-cols-4 gap-2 sm:grid-cols-8">
           {stageList.map((s, i) => (
-            <li key={s.key} title={s.note ?? s.error ?? ""} className={`relative rounded-lg px-2 py-2 text-xs ${s.status === "done" ? "bg-green-50 text-green-800" : s.status === "running" ? "bg-orange-50 text-orange-800 ring-1 ring-orange-300" : s.status === "failed" ? "bg-red-50 text-red-800" : "text-stone-400"}`}>
+            <li key={s.key} title={s.error ? stageError(s.error, t, data.isAdmin) : stageNote(s.note, t)} className={`relative rounded-lg px-2 py-2 text-xs ${s.status === "done" ? "bg-green-50 text-green-800" : s.status === "running" ? "bg-orange-50 text-orange-800 ring-1 ring-orange-300" : s.status === "failed" ? "bg-red-50 text-red-800" : "text-stone-400"}`}>
               <div className="flex items-center gap-1 font-medium">
                 <span className={`grid h-4 w-4 place-items-center rounded-full text-[10px] ${s.status === "done" ? "bg-green-600 text-white" : s.status === "running" ? "animate-pulse bg-orange-500 text-white" : s.status === "failed" ? "bg-red-600 text-white" : "bg-stone-200 text-stone-500"}`}>{s.status === "done" ? "✓" : i + 1}</span>
                 {s.label}
@@ -133,8 +135,8 @@ export function JobView({ code }: { code: string }) {
         {job.status === "failed" && (
           <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             <div className="font-medium">{current ? t(`${current.label} 失敗`, `${current.label} failed`) : t("處理失敗", "Processing failed")}</div>
-            <div className="mt-1 break-all text-xs">{current?.error}</div>
-            {data.isAdmin ? <RetryButton jobId={job._id} stage={current?.key ?? "extract"} onDone={load} /> : <p className="mt-2 text-xs">{t("我們會收到這次失敗的紀錄。你也可以換一段影片重新上傳。", "We log every failure. You can also try uploading a different video.")}</p>}
+            <div className="mt-1 break-all text-xs">{stageError(current?.error, t, data.isAdmin)}</div>
+            {data.isAdmin ? <RetryButton jobId={job._id} stage={current?.key ?? "extract"} onDone={load} /> : <p className="mt-2 text-xs"><Link href="/" className="underline">{t("回首頁重新上傳", "Upload again")}</Link></p>}
           </div>
         )}
       </section>
@@ -217,7 +219,7 @@ function BurstGrid({ items, assets, animate }: { items: ItemRow[]; assets: Asset
             <div key={it._id} className={`card overflow-hidden ${animate ? "burst" : ""}`} style={{ animationDelay: `${i * 60}ms`, ["--dx" as string]: dx, ["--dy" as string]: dy } as React.CSSProperties}>
               <div className="aspect-square bg-white"><img src={it.heroUrl ?? shotOf(it._id) ?? it.primaryCutoutUrl ?? it.primaryCropUrls[0]} alt={it.title} className="h-full w-full object-contain" /></div>
               <div className="px-2 py-1.5">
-                <div className="flex items-baseline justify-between"><span className="font-mono text-[10px] text-stone-400">{it.code}</span><span className="text-xs font-medium">{it.price != null ? `$${it.price}` : ""}</span></div>
+                <div className="flex items-baseline justify-between"><span className="font-mono text-[10px] text-stone-400">{it.code}</span><span className="text-xs font-medium">{it.price != null ? fmtPrice(it.price, it.currency) : ""}</span></div>
                 <div className="truncate text-xs">{it.title || it.category}</div>
               </div>
             </div>

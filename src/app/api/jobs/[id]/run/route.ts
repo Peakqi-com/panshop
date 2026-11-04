@@ -2,6 +2,7 @@ import { after } from "next/server";
 import { checkWorkerSecret } from "@/lib/auth";
 import { runAndChain } from "@/lib/pipeline";
 import { STAGES, type Stage } from "@/lib/stages";
+import { apiError } from "@/lib/api-error";
 
 export const maxDuration = 800; // Pro 方案上限；segment 與 render 最耗時
 
@@ -14,7 +15,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as { stage?: string; sync?: boolean };
   const stage = body.stage as Stage;
-  if (!STAGES.includes(stage)) return Response.json({ error: "stage 不對" }, { status: 400 });
+  if (!STAGES.includes(stage)) return apiError("stage 不對", "Invalid stage", 400);
   if (body.sync) return Response.json(await runAndChain(id, stage));
   after(() => runAndChain(id, stage));
   return Response.json({ queued: stage }, { status: 202 });

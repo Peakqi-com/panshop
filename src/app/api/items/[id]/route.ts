@@ -1,5 +1,6 @@
 import { items } from "@/repositories/items";
 import { guardItem } from "@/lib/owner";
+import { apiError } from "@/lib/api-error";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -9,7 +10,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const r = await items.patch(id, await req.json(), "user");
     return Response.json({ ok: !!r });
   } catch (e) {
-    return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 });
+    console.warn("item patch 失敗", e instanceof Error ? e.message : String(e));
+    return apiError("欄位不對", "Invalid fields", 400);
   }
 }
 

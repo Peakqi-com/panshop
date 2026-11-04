@@ -10,6 +10,7 @@ import { jobs } from "@/repositories/jobs";
 import { items } from "@/repositories/items";
 import type { Job } from "@/models/job";
 import type { Item } from "@/models/item";
+import { apiError } from "@/lib/api-error";
 
 const PREFIX = "ps_";
 export const hashToken = (t: string) => createHash("sha256").update(t).digest("hex");
@@ -38,8 +39,8 @@ export async function myJobs(limit = 50) {
   return ok.slice(0, limit);
 }
 
-const deny = () => Response.json({ error: "只有建立這個掃描的瀏覽器可以修改" }, { status: 403 });
-const notFound = () => Response.json({ error: "找不到" }, { status: 404 });
+const deny = () => apiError("只有建立這個掃描的瀏覽器可以修改", "Only the browser that created this scan can change it", 403);
+const notFound = () => apiError("找不到", "Not found", 404);
 
 export async function guardJob(id: string): Promise<Job | Response> {
   const job = ObjectId.isValid(id) ? await jobs.byId(id) : await jobs.byCode(id);
@@ -48,7 +49,7 @@ export async function guardJob(id: string): Promise<Job | Response> {
 }
 
 export async function guardItem(id: string): Promise<{ it: Item; job: Job } | Response> {
-  if (!ObjectId.isValid(id)) return Response.json({ error: "id 不對" }, { status: 400 });
+  if (!ObjectId.isValid(id)) return apiError("id 不對", "Invalid id", 400);
   const it = await items.byId(id);
   if (!it?._id) return notFound();
   const job = await jobs.byId(it.jobId);
@@ -62,6 +63,6 @@ export async function guardItems(ids: string[]): Promise<Job | Response> {
   const docs = (await Promise.all(valid.map((id) => items.byId(id)))).filter(Boolean) as Item[];
   if (!docs.length) return notFound();
   const jobIds = new Set(docs.map((d) => String(d.jobId)));
-  if (jobIds.size !== 1) return Response.json({ error: "商品不屬於同一個掃描" }, { status: 400 });
+  if (jobIds.size !== 1) return apiError("商品不屬於同一個掃描", "The items belong to different scans", 400);
   return guardJob([...jobIds][0]);
 }

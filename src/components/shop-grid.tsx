@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtPrice } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import { Lightbox, type LightboxImage } from "./lightbox";
 import { copyText } from "@/lib/copy-text";
@@ -51,7 +52,7 @@ export function ShopGrid({ items, shopName, shopUrl, qrDataUrl, contact }: { ite
             <div className="p-2.5">
               <div className="font-mono text-[11px] text-stone-400">{it.code}</div>
               <h2 className="text-sm font-medium leading-tight">{it.title}</h2>
-              <div className="mt-1 text-sm font-semibold">{it.price != null ? `${it.currency} ${it.price.toLocaleString()}` : t("私訊詢價", "Ask for price")}</div>
+              <div className="mt-1 text-sm font-semibold">{it.price != null ? fmtPrice(it.price, it.currency) : t("私訊詢價", "Ask for price")}</div>
             </div>
           </button>
         ))}
@@ -99,7 +100,7 @@ function Detail({ item: it, shopName, contact, onClose, say }: { item: ShopItem;
           </div>
         )}
         <div className="px-4 pb-6">
-          <div className="flex items-baseline justify-between"><span className="font-mono text-xs text-stone-400">{it.code} · {it.category}</span><span className="text-lg font-semibold">{it.price != null ? `${it.currency} ${it.price.toLocaleString()}` : t("私訊詢價", "Ask for price")}</span></div>
+          <div className="flex items-baseline justify-between"><span className="font-mono text-xs text-stone-400">{it.code} · {it.category}</span><span className="text-lg font-semibold">{it.price != null ? fmtPrice(it.price, it.currency) : t("私訊詢價", "Ask for price")}</span></div>
           <h2 className="mt-1 text-xl font-semibold">{it.title}</h2>
           {(it.color || it.material) && <p className="mt-1 text-sm text-stone-500">{[it.color, it.material].filter(Boolean).join(" · ")}</p>}
           {it.description && <p className="mt-3 text-sm leading-relaxed text-stone-700">{it.description}</p>}
