@@ -25,6 +25,7 @@ export default async function Home() {
             {t("直播、團購賣家的開播前後台。掃一段影片、丟一疊照片，或上傳直播回放，PanShop 會切出每一件商品、編好下單代碼、寫好品名與描述、做出多角度商品圖，匯出 Meta 商品目錄、可購買頁和每件一支短片；觀眾留言「A3+1」，直接整理成訂單表。",
               "The before-and-after-the-show back office for live and group-buy sellers. Shoot one video, drop in photos, or upload a live replay: PanShop cuts out every product, gives it an order code, writes the title and description, makes multi-angle photos, and exports a Meta catalog, a shop page and a short video per item. When shoppers comment “A3+1”, it becomes an order sheet.")}
           </p>
+          <a href="#start" className="btn btn-primary mt-6 w-full py-3 text-base lg:hidden">{t("開始掃描", "Start a scan")}</a>
           <ol className="mt-8 grid gap-3 text-sm sm:grid-cols-3">
             {[
               ["1", t("掃或匯入", "Scan or import"), t("影片、照片、直播回放三種入口，怎麼方便怎麼來。", "Video, photos or a live replay: use whatever you have.")],

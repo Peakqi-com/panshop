@@ -226,11 +226,13 @@ function CommentDemo({ jobId, className = "" }: { jobId: string; className?: str
     const rows = text.split(/\n+/).map((x) => x.trim()).filter(Boolean).slice(0, 30);
     if (!rows.length) return;
     setBusy(true);
-    for (const row of rows) {
-      const r = await fetch("/api/comments", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jobId, text: row }) });
-      const j = await r.json().catch(() => ({}));
-      setLog((l) => [{ text: row, reply: j.reply ?? j.error ?? "", itemCode: j.itemCode ?? null, itemTitle: j.itemTitle ?? null, model: j.model ?? "", ms: j.ms ?? 0, buyer: j.buyer ?? null, lines: j.lines }, ...l]);
-    }
+    // 同時送出：下單留言是規則解析、幾毫秒就回來，不必排在模型回覆的提問後面
+    const results = await Promise.all(rows.map(async (row): Promise<CommentResult> => {
+      const r = await fetch("/api/comments", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jobId, text: row }) }).catch(() => null);
+      const j = r ? await r.json().catch(() => ({})) : { error: t("連線失敗", "Network error") };
+      return { text: row, reply: j.reply ?? j.error ?? "", itemCode: j.itemCode ?? null, itemTitle: j.itemTitle ?? null, model: j.model ?? "", ms: j.ms ?? 0, buyer: j.buyer ?? null, lines: j.lines };
+    }));
+    setLog((l) => [...results.reverse(), ...l]);
     setText(""); setBusy(false);
   }
   // 訂單表：同一位買家同一件合併數量

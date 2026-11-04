@@ -79,9 +79,9 @@ export function ReviewTable({ data, onChange }: { data: JobPayload; onChange: ()
       )}
 
       <div className="card mt-3 overflow-x-auto">
-        <table className="w-full min-w-[760px] text-sm">
+        <table className="w-full text-sm md:min-w-[760px]">
           <thead className="bg-stone-50 text-left text-xs text-stone-500">
-            <tr>{editable && <th className="p-3"><input type="checkbox" checked={sel.size === items.length && items.length > 0} onChange={(e) => setSel(e.target.checked ? new Set(items.map((i) => i._id)) : new Set())} /></th>}<th className="p-3">{t("商品", "Item")}</th><th className="p-3">{t("品名與描述", "Name & description")}</th><th className="p-3">{t("顏色／材質", "Color / material")}</th><th className="p-3 text-right">{t("價格", "Price")} <span className="font-normal text-stone-400">{data.job.currency}</span> ({job.currency})</th><th className="p-3">{t("依據", "Evidence")}</th><th className="p-3"></th></tr>
+            <tr>{editable && <th className="p-2 sm:p-3"><input type="checkbox" checked={sel.size === items.length && items.length > 0} onChange={(e) => setSel(e.target.checked ? new Set(items.map((i) => i._id)) : new Set())} /></th>}<th className="p-2 sm:p-3">{t("商品", "Item")}</th><th className="p-2 sm:p-3">{t("品名與描述", "Name & description")}</th><th className="p-2 sm:p-3 text-right">{t("價格", "Price")} <span className="font-normal text-stone-400">{data.job.currency}</span></th><th className="hidden p-3 md:table-cell">{t("顏色／材質", "Color / material")}</th><th className="hidden p-3 md:table-cell">{t("依據", "Evidence")}</th><th className="p-2 sm:p-3"></th></tr>
           </thead>
           <tbody>
             {items.map((it) => <Row key={it._id} item={it} editable={editable} categories={categories} selected={sel.has(it._id)} onToggle={() => toggle(it._id)} onChange={onChange} say={say} />)}
@@ -138,11 +138,11 @@ function Row({ item, editable, categories, selected, onToggle, onChange, say }: 
 
   return (
     <tr className={`border-t border-stone-100 align-top ${selected ? "bg-orange-50/60" : low ? "bg-amber-50/70" : ""}`}>
-      {editable && <td className="p-3"><input type="checkbox" checked={selected} onChange={onToggle} /></td>}
-      <td className="p-3">
+      {editable && <td className="p-2 sm:p-3"><input type="checkbox" checked={selected} onChange={onToggle} /></td>}
+      <td className="p-2 sm:p-3">
         <div className="flex gap-2">
           <img src={item.primaryCutoutUrl ?? item.primaryCropUrls[0]} alt="" className="h-16 w-16 rounded-lg bg-white object-contain ring-1 ring-stone-200" />
-          <div className="flex flex-col gap-1">{item.primaryCropUrls.slice(0, 2).map((u) => <img key={u} src={u} alt="" className="h-7 w-7 rounded object-cover ring-1 ring-stone-200" />)}</div>
+          <div className="hidden flex-col gap-1 sm:flex">{item.primaryCropUrls.slice(0, 2).map((u) => <img key={u} src={u} alt="" className="h-7 w-7 rounded object-cover ring-1 ring-stone-200" />)}</div>
         </div>
         <div className="mt-1 flex items-center gap-1 font-mono text-xs text-stone-500">
           {item.code}
@@ -154,7 +154,7 @@ function Row({ item, editable, categories, selected, onToggle, onChange, say }: 
         </div>
         {item.trackIds.length > 1 && <div className="mt-0.5 text-[11px] text-stone-400">{t(`${item.trackIds.length} 段影像`, `${item.trackIds.length} clips`)}{editable && <> · <button onClick={split} className="underline hover:text-stone-700">{t(`拆成 ${item.trackIds.length} 件`, `Split into ${item.trackIds.length}`)}</button></>}</div>}
       </td>
-      <td className="p-3">
+      <td className="p-2 sm:p-3">
         {editable ? <input value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => title !== item.title && save({ title })} className="input" /> : <div className="font-medium">{item.title}</div>}
         {editable ? (
           <>
@@ -164,7 +164,12 @@ function Row({ item, editable, categories, selected, onToggle, onChange, say }: 
         ) : <div className="mt-1 line-clamp-2 text-xs text-stone-500">{item.description}</div>}
         <div className="mt-1 text-[11px] text-stone-400">{t("信心", "Confidence")} {Math.round(item.confidence.overall * 100)}%{saving && t(" · 儲存中…", " · Saving…")}</div>
       </td>
-      <td className="p-3 text-stone-600">
+      <td className="p-2 sm:p-3 text-right">
+        {editable ? (
+          <input value={price} inputMode="decimal" onChange={(e) => setPrice(e.target.value)} onBlur={() => (price === "" ? null : Number(price)) !== item.price && save({ price: price === "" ? null : Number(price) })} className="input w-20 text-right sm:w-24" placeholder={t("未定", "TBD")} />
+        ) : item.price != null ? fmtPrice(item.price, item.currency) : <span className="text-stone-400">{t("未定", "TBD")}</span>}
+      </td>
+      <td className="hidden p-3 text-stone-600 md:table-cell">
         {editable ? (
           <div className="flex flex-col gap-1">
             <input value={color} onChange={(e) => setColor(e.target.value)} onBlur={() => color !== item.color && save({ color })} placeholder={t("顏色", "Color")} className="input w-24 py-1 text-xs" />
@@ -172,16 +177,11 @@ function Row({ item, editable, categories, selected, onToggle, onChange, say }: 
           </div>
         ) : ([item.color, item.material].filter(Boolean).join("／") || "—")}
       </td>
-      <td className="p-3 text-right">
-        {editable ? (
-          <input value={price} inputMode="decimal" onChange={(e) => setPrice(e.target.value)} onBlur={() => (price === "" ? null : Number(price)) !== item.price && save({ price: price === "" ? null : Number(price) })} className="input w-24 text-right" placeholder={t("未定", "TBD")} />
-        ) : item.price != null ? fmtPrice(item.price, item.currency) : <span className="text-stone-400">{t("未定", "TBD")}</span>}
-      </td>
-      <td className="p-3 text-xs text-stone-500">
+      <td className="hidden p-3 text-xs text-stone-500 md:table-cell">
         {item.sources.speech ? <span className="rounded bg-orange-100 px-1.5 py-0.5 text-orange-800" title={item.speechEvidence}>{t("畫面＋口述", "Vision + speech")}</span> : <span className="rounded bg-stone-100 px-1.5 py-0.5">{t("畫面", "Vision")}</span>}
         {item.speechEvidence && <div className="mt-1 max-w-[160px] truncate text-[11px] text-stone-400" title={item.speechEvidence}>「{item.speechEvidence}」</div>}
       </td>
-      <td className="p-3 text-right">{editable && <button onClick={remove} className="text-xs text-stone-400 hover:text-red-600">{t("不賣", "Remove")}</button>}</td>
+      <td className="p-2 sm:p-3 text-right">{editable && <button onClick={remove} className="text-xs text-stone-400 hover:text-red-600">{t("不賣", "Remove")}</button>}</td>
     </tr>
   );
 }

@@ -106,9 +106,9 @@ export function UploadForm({ needPasscode, trialPerDay, sampleAvailable, maxVide
   const current = MODES.find((m) => m.id === mode)!;
 
   return (
-    <form onSubmit={submit} className="card rise p-6 shadow-sm">
+    <form id="start" onSubmit={submit} className="card rise scroll-mt-20 p-6 shadow-sm">
       <div className="flex gap-1 rounded-lg bg-stone-100 p-1 text-sm">
-        {MODES.map((m) => <button key={m.id} type="button" onClick={() => { setMode(m.id); setFile(null); setMeta(null); setWarn(null); setError(null); }} className={`flex-1 rounded-md px-2 py-1.5 ${mode === m.id ? "bg-white font-medium shadow-sm" : "text-stone-500"}`}>{t(...m.label)}</button>)}
+        {MODES.map((m) => <button key={m.id} type="button" onClick={() => { setMode(m.id); setFile(null); setMeta(null); setWarn(null); setError(null); }} className={`flex-1 whitespace-nowrap rounded-md px-1.5 py-1.5 text-xs sm:px-2 sm:text-sm ${mode === m.id ? "bg-white font-medium shadow-sm" : "text-stone-500"}`}>{t(...m.label)}</button>)}
       </div>
       <p className="mt-2 text-xs text-stone-500">{t(...current.hint)}</p>
 
