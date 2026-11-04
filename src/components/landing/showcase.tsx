@@ -55,7 +55,7 @@ export function ShowcasePanel({ show }: { show: Showcase }) {
         <ReelPhone key={it.code} src={it.reel} poster={it.cover} />
         <div className="text-center">
           <p className="font-black">{it.title}{it.price != null && <span className="ml-2 rounded-md border-2 border-[var(--ink)] bg-[var(--yellow)] px-1.5 text-sm">{fmtPrice(it.price, show.currency)}</span>}</p>
-          {it.speech && <p className="mt-1 text-xs text-stone-500">{en ? "Heard from the seller:" : "賣家原句："}「{it.speech}」</p>}
+          {!en && it.speech && <p className="mt-1 text-xs text-stone-500">{en ? "Heard from the seller:" : "賣家原句："}「{it.speech}」</p>}
         </div>
         <div className="flex flex-wrap justify-center gap-2">
           <Link href={`/s/${show.code}`} className="btn btn-primary text-sm">{en ? "Open the shop page" : "打開可購買頁"}</Link>

@@ -93,7 +93,9 @@ export function PanTheater({ show }: { show: Showcase | null }) {
   }, [comments, shownComments, codes, its]);
   const total = order.reduce((s, o) => s + o.sub, 0);
 
-  const speech = its[0]?.speech ?? "";
+  const first = its[0];
+  // 英文介面：顯示 Muse Voice 聽到後整理出的品名與價格；中文介面：賣家原句
+  const speech = en ? (first ? `${first.title}${first.price != null ? ` · ${fmtPrice(first.price, cur)}` : ""}` : "") : first?.speech ?? "";
   const typed = ch === 2 ? speech.slice(0, Math.ceil(speech.length * Math.min(local * 1.6, 1))) : ch > 2 ? speech : "";
   const phoneX = ch === 0 ? 4 + local * 70 : ch > 0 ? 74 : 4;
 
@@ -194,7 +196,7 @@ export function PanTheater({ show }: { show: Showcase | null }) {
               <span className="flex h-5 items-end gap-[2px]" aria-hidden>{[5, 9, 14, 8, 12, 6, 10].map((h, k) => <span key={k} className="ps-wave w-[3px] rounded bg-[var(--purple)]" style={{ height: h, animationDelay: `${k * 90}ms` }} />)}</span>
               <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-stone-500">Muse Voice Transcribe</span>
             </div>
-            <p className="mt-1 min-h-[1.4em] text-sm font-bold">「{typed}<span className="animate-pulse">▍</span>」</p>
+            <p className="mt-1 min-h-[1.4em] text-sm font-bold">{en ? "“" : "「"}{typed}<span className="animate-pulse">▍</span>{en ? "”" : "」"}</p>
           </div>
 
           {/* 產出：CSV 與短片手機 */}

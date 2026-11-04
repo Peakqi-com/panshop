@@ -18,7 +18,7 @@ export default async function Landing() {
   const [cfg, lang] = await Promise.all([settings.get(), getLang()]);
   const t = makeT(lang);
   const [stage, show] = await Promise.all([
-    loadShowcase(SHOWCASE_DEFAULT.zh),
+    loadShowcase(SHOWCASE_DEFAULT[lang]),
     loadShowcase(cfg.featuredJobCode || SHOWCASE_DEFAULT[lang]),
   ]);
 
