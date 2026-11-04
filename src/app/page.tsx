@@ -127,8 +127,8 @@ export default async function Landing() {
         <section className="py-24">
           <Reveal>
             <div className="card relative overflow-hidden px-6 py-12 text-center" style={{ background: "var(--accent)" }}>
-              <span aria-hidden className="ps-float absolute left-[6%] top-[18%] h-10 w-10 rounded-full border-[3px] border-[var(--ink)] bg-[var(--yellow)]" />
-              <span aria-hidden className="ps-float-2 absolute bottom-[14%] right-[8%] h-10 w-10 rotate-12 border-[3px] border-[var(--ink)] bg-[var(--teal)]" />
+              <span aria-hidden className="ps-float absolute left-[6%] top-[18%] hidden h-10 w-10 sm:block rounded-full border-[3px] border-[var(--ink)] bg-[var(--yellow)]" />
+              <span aria-hidden className="ps-float-2 absolute bottom-[14%] right-[8%] hidden h-10 w-10 sm:block rotate-12 border-[3px] border-[var(--ink)] bg-[var(--teal)]" />
               <h2 className="text-3xl font-black sm:text-5xl"><span className="mark">{t("現在就掃一圈", "Pan your first shelf")}</span></h2>
               <p className="mx-auto mt-4 max-w-xl font-bold">{t("不用註冊，免費試用。沒有影片也可以用範例影片試。", "No sign-up, free to try, and a sample video if you don't have one yet.")}</p>
               <div className="mt-6 flex flex-wrap justify-center gap-3">

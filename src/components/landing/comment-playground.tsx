@@ -53,7 +53,7 @@ export function CommentPlayground({ items, currency }: { items: ShowItem[]; curr
             <tbody>
               {sheet.map((o) => (
                 <tr key={`${o.buyer}${o.code}`} className="border-t-2 border-[var(--ink)]/15">
-                  <td className="px-2 py-1.5 font-bold">{o.buyer}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 font-bold">{o.buyer}</td>
                   <td className="px-2 py-1.5"><span className="font-mono font-black">{o.code}</span> <span className="text-stone-600">{o.title}</span></td>
                   <td className="px-2 py-1.5 text-right">{o.qty}</td>
                   <td className="px-2 py-1.5 text-right font-bold">{fmtPrice(o.sub, currency)}</td>

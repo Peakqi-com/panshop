@@ -16,10 +16,10 @@ export function SiteHeader() {
           <span aria-hidden className="inline-block h-7 w-7 rounded-lg border-[2.5px] border-[var(--ink)] bg-[var(--accent)] shadow-[2px_2px_0_var(--ink)]" />
           PanShop
         </Link>
-        <nav className="flex items-center gap-2 text-sm font-bold sm:gap-4">
+        <nav className="flex items-center gap-1.5 whitespace-nowrap text-xs font-bold sm:gap-4 sm:text-sm">
           <LangToggle />
-          <Link href="/jobs" className="rounded-full border-[2.5px] border-transparent px-2 py-1 hover:border-[var(--ink)] hover:bg-[var(--yellow)]">{t("我的掃描", "My scans")}</Link>
-          <Link href="/new" className="btn btn-primary px-3 py-1.5 text-sm">{t("新掃描", "New scan")}</Link>
+          <Link href="/jobs" className="rounded-full border-[2.5px] border-transparent px-1.5 py-1 hover:border-[var(--ink)] hover:bg-[var(--yellow)]">{t("我的掃描", "My scans")}</Link>
+          <Link href="/new" className="btn btn-primary px-2.5 py-1.5 text-xs sm:px-3 sm:text-sm">{t("新掃描", "New scan")}</Link>
         </nav>
       </div>
     </header>

@@ -16,7 +16,9 @@
   --shadow: 5px 5px 0 var(--ink);
   --shadow-sm: 3px 3px 0 var(--ink);
 }
-html { font-family: var(--font-noto), ui-sans-serif, system-ui, "PingFang TC", sans-serif; }
+/* 中文字型把英文彎引號畫成全形寬，引號改用拉丁字型 */
+@font-face { font-family: "PS Quote"; src: local("Helvetica Neue"), local("Helvetica"), local("Arial"), local("Roboto"); unicode-range: U+2018-2019, U+201C-201D; }
+html { font-family: "PS Quote", var(--font-noto), ui-sans-serif, system-ui, "PingFang TC", sans-serif; }
 body {
   background-color: var(--bg);
   background-image: radial-gradient(rgb(17 17 17 / 11%) 1.5px, transparent 1.6px);

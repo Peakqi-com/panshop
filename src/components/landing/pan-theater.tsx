@@ -78,7 +78,7 @@ export function PanTheater({ show }: { show: Showcase | null }) {
   const its = (show?.items ?? []).slice(0, 3);
   const cur = show?.currency ?? "TWD";
   const comments = useMemo(
-    () => (en ? ["A1+1", "Amy: B1 x2", "+1 C1", "How much is A1?"] : ["A1+1", "小美：B1 x2", "+1 C1", "A1 多少？"]),
+    () => (en ? ["A1+1", "Amy: B1 x2", "+1 C1", "A1 price?"] : ["A1+1", "小美：B1 x2", "+1 C1", "A1 多少？"]),
     [en],
   );
   const codes = its.map((i) => i.code);
@@ -134,7 +134,7 @@ export function PanTheater({ show }: { show: Showcase | null }) {
         {/* 右：舞台 */}
         <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-[18px] border-[3px] border-[var(--ink)] bg-white shadow-[8px_8px_0_var(--ink)] lg:w-[54%]" style={{ backgroundImage: "radial-gradient(rgba(17,17,17,.13) 1.3px, transparent 1.3px)", backgroundSize: "18px 18px" }}>
           {/* 裝飾幾何 */}
-          <span aria-hidden className="ps-float absolute bottom-[38%] left-[2%] h-8 w-8 rounded-full border-[3px] border-[var(--ink)] bg-[var(--pink)]" />
+          <span aria-hidden className="ps-float absolute bottom-[38%] left-[2%] hidden h-8 w-8 sm:block rounded-full border-[3px] border-[var(--ink)] bg-[var(--pink)]" />
           <span aria-hidden className="ps-float-2 absolute right-[7%] top-[10%] h-0 w-0 border-x-[16px] border-b-[28px] border-x-transparent border-b-[var(--teal)] drop-shadow-[2px_2px_0_var(--ink)]" />
           <svg aria-hidden className="ps-float absolute bottom-[6%] right-[5%] w-16" viewBox="0 0 64 16"><path d="M2 8 Q10 0 18 8 T34 8 T50 8 T64 8" fill="none" stroke="var(--purple)" strokeWidth="4" strokeLinecap="round" /></svg>
 
