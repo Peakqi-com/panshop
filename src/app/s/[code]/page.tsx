@@ -5,20 +5,23 @@ import { jobs } from "@/repositories/jobs";
 import { items as itemRepo } from "@/repositories/items";
 import { assets as assetRepo } from "@/repositories/assets";
 import { ShopGrid, type ShopItem } from "@/components/shop-grid";
+import { LangToggle } from "@/components/lang";
+import { getT } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
   const { code } = await params;
-  const job = await jobs.byCode(code);
-  return { title: job?.shopName || "本週新品", description: job ? `${job.metrics.itemCount ?? ""} 件商品，留言代碼即可下單` : undefined };
+  const [job, t] = await Promise.all([jobs.byCode(code), getT()]);
+  return { title: job?.shopName || t("本週新品", "New this week"), description: job ? t(`${job.metrics.itemCount ?? ""} 件商品，留言代碼即可下單`, `${job.metrics.itemCount ?? ""} items — comment the code to order`) : undefined };
 }
 
 /** 可購買頁：公開、手機優先。下單＝複製「我要 代碼 品名」，再帶顧客去賣家的 IG、LINE 或簡訊 */
 export default async function ShopPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const job = await jobs.byCode(code);
+  const [job, t] = await Promise.all([jobs.byCode(code), getT()]);
   if (!job?._id) notFound();
+  const shopTitle = job.shopName || t("本週新品", "New this week");
   const [list, ass] = await Promise.all([itemRepo.forJob(job._id), assetRepo.forJob(job._id)]);
   const byItem = new Map(ass.map((a) => [String(a.itemId), a]));
   const shopUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/s/${job.code}`;
@@ -31,12 +34,13 @@ export default async function ShopPage({ params }: { params: Promise<{ code: str
   });
   return (
     <main className="mx-auto max-w-md px-4 pb-16 pt-8">
-      <header className="text-center">
-        <div aria-hidden className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-orange-500 to-amber-400 text-2xl font-bold text-white">{Array.from(job.shopName || "新")[0]}</div>
-        <h1 className="mt-3 text-2xl font-bold">{job.shopName || "本週新品"}</h1>
-        <p className="mt-1 text-sm text-stone-500">{items.length} 件 · 點商品看詳情，留言代碼即可下單</p>
+      <header className="relative text-center">
+        <LangToggle className="absolute right-0 top-0" />
+        <div aria-hidden className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-orange-500 to-amber-400 text-2xl font-bold text-white">{Array.from(job.shopName || t("新", "N"))[0]}</div>
+        <h1 className="mt-3 text-2xl font-bold">{shopTitle}</h1>
+        <p className="mt-1 text-sm text-stone-500">{t(`${items.length} 件 · 點商品看詳情，留言代碼即可下單`, `${items.length} items · tap for details, comment the code to order`)}</p>
       </header>
-      <ShopGrid items={items} shopName={job.shopName || "本週新品"} shopUrl={shopUrl} qrDataUrl={qr} contact={{ instagram: job.contact?.instagram ?? "", line: job.contact?.line ?? "", phone: job.contact?.phone ?? "" }} />
+      <ShopGrid items={items} shopName={shopTitle} shopUrl={shopUrl} qrDataUrl={qr} contact={{ instagram: job.contact?.instagram ?? "", line: job.contact?.line ?? "", phone: job.contact?.phone ?? "" }} />
       <p className="mt-10 text-center text-xs text-stone-400">Built with PanShop</p>
     </main>
   );

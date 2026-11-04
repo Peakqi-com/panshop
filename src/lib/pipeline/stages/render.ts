@@ -21,6 +21,7 @@ import { resolveMusic } from "@/lib/video/pick-music";
 import { pickSentence, hasChinesePrice, chineseDigitsToArabic } from "@/lib/video/price-text";
 import { settings } from "@/repositories/settings";
 import { STYLES, type StyleId } from "@/lib/config";
+import { isEn, withLang, ctaText, noPriceText, priceLabel } from "@/lib/video/lang";
 
 const BUDGET_MS = 210_000;
 
@@ -78,7 +79,8 @@ export default render;
 async function writeCopy(job: Job, jobId: ObjectId, needCopy: Item[]) {
   const { data, usd } = await sparkJSON({
     schema: Copy, name: "copy", effort: "low", maxTokens: 9000,
-    system: `你是台灣的社群小編，替小賣家寫商品貼文與短影片口白。語氣親切、具體、不浮誇，只用繁體中文、阿拉伯數字與常見標點，不夾雜其他語言。幣別 ${job.currency}。店名「${job.shopName || "本店"}」。只能寫畫面與資料裡看得到的事實：不得捏造認證、檢驗、產地、功效、規格數字，也不得自行加優惠、折扣、贈品、免運、限時。沒有價格就寫「價格請私訊」。`,
+    system: withLang(`你是台灣的社群小編，替小賣家寫商品貼文與短影片口白。語氣親切、具體、不浮誇，只用繁體中文、阿拉伯數字與常見標點，不夾雜其他語言。幣別 ${job.currency}。店名「${job.shopName || "本店"}」。只能寫畫面與資料裡看得到的事實：不得捏造認證、檢驗、產地、功效、規格數字，也不得自行加優惠、折扣、贈品、免運、限時。沒有價格就寫「價格請私訊」。`, isEn(job))
+      + (isEn(job) ? ` In English captions the call to action is "Comment <code> for the link" (use the item's code); with no price write "${noPriceText(true)}". Prices like ${priceLabel(1980, job.currency, true)}.` : ""),
     parts: [{ text: `請替以下每件商品各寫一份：\n${needCopy.map((i) => `- ${i.code}｜${i.title}｜${i.color} ${i.material}｜${i.price != null ? `${job.currency} ${i.price}` : "價格私訊"}｜${i.description}`).join("\n")}` }],
   });
   for (const c of data.items) {
@@ -103,7 +105,7 @@ export async function renderItem(job: Job, it: Item, a: Asset, spans: readonly (
     if (!sb) {
       const w = await writeStoryboard(job, it, a); usd += w.usd;
       const { scenes, usd: u2 } = await ensureSceneImages(job, it, a, w.sb, log); usd += u2;
-      sb = { hook: w.sb.hook, cta: w.sb.cta || `留言 ${it.code} 取得連結`, scenes, price: it.price };
+      sb = { hook: w.sb.hook, cta: w.sb.cta || ctaText(it.code, isEn(job)), scenes, price: it.price };
       await assetRepo.upsert(it._id!, job._id!, { storyboard: sb, hook: a.hook || w.sb.hook });
     }
 
@@ -115,7 +117,9 @@ export async function renderItem(job: Job, it: Item, a: Asset, spans: readonly (
       for (const [i, sc] of scenes.entries()) {
         if (!(sc.overlay === "price" || sc.overlay === "cta" || mentions(sc.narration) || mentions(sc.subtitle))) continue;
         try {
-          const r = await rewriteSceneText(job, it, a, { ...sb, scenes }, sc.sceneNo, `價格已改為 ${it.price != null ? `${job.currency} ${it.price}` : "未定，請說價格請私訊"}，旁白與字幕要用新價格`);
+          const r = await rewriteSceneText(job, it, a, { ...sb, scenes }, sc.sceneNo, isEn(job)
+            ? `The price changed to ${it.price != null ? priceLabel(it.price, job.currency, true) : `not set, say "${noPriceText(true)}"`}; narration and subtitle must use the new price`
+            : `價格已改為 ${it.price != null ? `${job.currency} ${it.price}` : "未定，請說價格請私訊"}，旁白與字幕要用新價格`);
           usd += r.usd; scenes[i] = { ...sc, narration: r.data.narration, subtitle: r.data.subtitle };
         } catch (e) { log(`${it.code} 第 ${sc.sceneNo} 場價格旁白重寫失敗：${(e as Error).message.slice(0, 80)}`); }
       }
@@ -141,7 +145,7 @@ export async function renderItem(job: Job, it: Item, a: Asset, spans: readonly (
     }
     const mus = await resolveMusic(sb.music, style, it.code, cursor, dir, log);
     const r = await renderAdV2({ code: it.code, title: it.title || it.category, price: it.price, currency: job.currency, storeName: job.shopName || "PanShop", style,
-      hook: sb.hook || a.hook || it.title, cta: `留言 ${it.code} 取得連結`, cutoutPath, scenes, musicPath: mus.path, workDir: dir });
+      hook: sb.hook || a.hook || it.title, cta: ctaText(it.code, isEn(job)), cutoutPath, scenes, musicPath: mus.path, workDir: dir, en: isEn(job) });
     const stamp = Date.now().toString(36);
     const [reelUrl, coverUrl] = await Promise.all([
       putFile(`jobs/${job.code}/items/${stamp}/${it.code}/ad.mp4`, r.mp4),
@@ -173,7 +177,7 @@ async function prepareVoice(job: Job, it: Item, scenes: { narration: string }[],
     let provider = "";
     for (const [i, sc] of scenes.entries()) {
       const text = sc.narration?.trim(); if (!text) continue;
-      const tts = await synthesize(text);
+      const tts = await synthesize(text, isEn(job) ? "en" : "zh");
       if (!tts) { provider = ""; break; }
       provider = tts.provider;
       const mp3 = path.join(dir, `n${i}.mp3`), wav = path.join(dir, `n${i}.wav`);
@@ -221,7 +225,7 @@ async function renderItemV1(job: Job, it: Item, a: Asset, spans: readonly (reado
   const r = await renderAd({
     code: it.code, title: it.title || it.category, price: it.price, currency: job.currency, storeName: job.shopName || "PanShop", style,
     hook: a.hook || it.title, sellingPoints: a.sellingPoints?.length ? a.sellingPoints : [it.color, it.material, it.category].filter(Boolean), subtitle: undefined,
-    cutoutPath, heroPath, lifestylePath, shotPaths, voicePath: v?.path, voiceStartSec: v ? 1.6 : undefined, voiceDurSec: v?.dur, workDir: dir,
+    cutoutPath, heroPath, lifestylePath, shotPaths, voicePath: v?.path, voiceStartSec: v ? 1.6 : undefined, voiceDurSec: v?.dur, workDir: dir, en: isEn(job),
   });
   const stamp = Date.now().toString(36);
   const [reelUrl, coverUrl] = await Promise.all([putFile(`jobs/${job.code}/items/${stamp}/${it.code}/ad.mp4`, r.mp4), putFile(`jobs/${job.code}/items/${stamp}/${it.code}/cover.png`, r.cover)]);

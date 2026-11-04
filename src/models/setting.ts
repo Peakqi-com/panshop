@@ -13,6 +13,8 @@ export const AppSettingsSchema = z.object({
   commentModel: z.enum(["spark-open", "spark"]).default("spark-open"),
   voiceMode: z.enum(["tts", "seller", "none"]).default("tts"),   // 短片配音：專業 TTS、賣家原聲、無口白
   featuredJobCode: z.string().default(""),                        // 首頁「看範例成果」連到的掃描代碼，空白不顯示
+  trialJobsPerIp: z.number().int().min(0).max(100).default(3),   // 公開試用：每個 IP 每 24 小時可建幾個掃描，0＝不限
+  dailyBudgetUsd: z.number().min(0).max(1000).default(20),        // 全站 24 小時模型花費上限（美元），超過就暫停新掃描與產出，0＝不限
 });
 export type AppSettings = z.infer<typeof AppSettingsSchema>;
 export const DEFAULT_APP_SETTINGS: AppSettings = AppSettingsSchema.parse({});

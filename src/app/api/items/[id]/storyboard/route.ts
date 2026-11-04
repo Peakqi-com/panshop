@@ -4,6 +4,7 @@ import { items } from "@/repositories/items";
 import { jobs } from "@/repositories/jobs";
 import { assets } from "@/repositories/assets";
 import { canEditJob } from "@/lib/owner";
+import { isEn, ctaText } from "@/lib/video/lang";
 import { writeStoryboard, ensureSceneImages, generateSceneImage, rewriteSceneText, MOTIONS } from "@/lib/video/storyboard";
 
 export const maxDuration = 300;
@@ -45,7 +46,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const p = Patch.safeParse(await req.json().catch(() => null));
   if (!p.success) return Response.json({ error: `欄位不對：${p.error.issues[0]?.message ?? ""}` }, { status: 400 });
   const prev = ctx.a.storyboard;
-  const storyboard = { ...prev, cta: prev?.cta ?? `留言 ${ctx.it.code} 取得連結`, hook: p.data.hook, music: p.data.music ?? prev?.music, scenes: p.data.scenes.map((s, i) => ({ ...s, sceneNo: i + 1 })) };
+  const storyboard = { ...prev, cta: prev?.cta ?? ctaText(ctx.it.code, isEn(ctx.job)), hook: p.data.hook, music: p.data.music ?? prev?.music, scenes: p.data.scenes.map((s, i) => ({ ...s, sceneNo: i + 1 })) };
   await assets.upsert(ctx.it._id!, ctx.job._id!, { storyboard });
   return Response.json({ ok: true, storyboard });
 }
@@ -63,7 +64,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (p.data.action === "rewrite") {
       const w = await writeStoryboard(job, it, a);
       const { scenes, usd } = await ensureSceneImages(job, it, a, w.sb, (m) => console.log(`[${job.code}][storyboard] ${m}`));
-      const storyboard = { ...a.storyboard, hook: w.sb.hook, cta: `留言 ${it.code} 取得連結`, scenes };
+      const storyboard = { ...a.storyboard, hook: w.sb.hook, cta: ctaText(it.code, isEn(job)), scenes };
       await assets.upsert(it._id!, job._id!, { storyboard });
       await jobs.addCost(job._id!, w.usd + usd);
       return Response.json({ ok: true, storyboard });

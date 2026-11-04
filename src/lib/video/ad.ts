@@ -10,6 +10,8 @@ import sharp from "sharp";
 import { createCanvas, loadImage, GlobalFonts, type SKRSContext2D, type Image } from "@napi-rs/canvas";
 import { ffmpegPath, run } from "@/lib/ffmpeg";
 import { generateMusic } from "./music";
+import { wrapText } from "./wrap";
+import { priceLabel, noPriceText, ctaText } from "./lang";
 
 export const W = 1080, H = 1920, FPS = 30, DUR = 15;
 const FONT = "PanShopTC";
@@ -36,16 +38,14 @@ export type AdInput = {
   cutoutPath?: string; heroPath?: string; lifestylePath?: string; shotPaths: string[];
   voicePath?: string; voiceStartSec?: number; voiceDurSec?: number;
   workDir: string;
+  en?: boolean;
 };
 
 const ease = (x: number) => 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), 3);
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 function wrap(ctx: SKRSContext2D, text: string, maxWidth: number, maxLines = 3): string[] {
-  const lines: string[] = []; let cur = "";
-  for (const ch of text) { const next = cur + ch; if (ctx.measureText(next).width > maxWidth && cur) { lines.push(cur); cur = ch; } else cur = next; }
-  if (cur) lines.push(cur);
-  return lines.slice(0, maxLines);
+  return wrapText((s) => ctx.measureText(s).width, text, maxWidth, maxLines);
 }
 function roundRect(ctx: SKRSContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.closePath();
@@ -86,7 +86,8 @@ export async function renderAd(input: AdInput): Promise<{ mp4: string; cover: st
 
   const canvas = createCanvas(W, H);
   let ctx = canvas.getContext("2d");  // 交叉淡化時暫時指到離屏畫布，所有繪圖函式都透過這個變數取用
-  const priceText = input.price != null ? `${input.currency} ${input.price.toLocaleString()}` : "價格請私訊";
+  const en = !!input.en;
+  const priceText = input.price != null ? priceLabel(input.price, input.currency, en) : noPriceText(en);
   const hookLines = (() => { ctx.font = `700 92px ${FONT}`; return wrap(ctx, input.hook || input.title, W - 200, 3); })();
   const titleLines = (() => { ctx.font = `500 54px ${FONT}`; return wrap(ctx, input.title, W - 200, 2); })();
   const subLines = input.subtitle ? (() => { ctx.font = `500 44px ${FONT}`; return wrap(ctx, input.subtitle, W - 160, 2); })() : [];
@@ -177,10 +178,10 @@ export async function renderAd(input: AdInput): Promise<{ mp4: string; cover: st
     ctx.fillStyle = p.fg; ctx.font = `500 50px ${FONT}`; titleLines.forEach((l, i) => ctx.fillText(l, W / 2, H * 0.57 + i * 62));
     const shown = input.price != null ? Math.round(input.price * ease(local / 0.9)) : null;
     ctx.fillStyle = p.accent; ctx.font = `700 132px ${FONT}`;
-    ctx.fillText(shown != null ? `${input.currency} ${shown.toLocaleString()}` : "價格請私訊", W / 2, H * 0.70);
+    ctx.fillText(shown != null ? priceLabel(shown, input.currency, en) : noPriceText(en), W / 2, H * 0.70);
     const k3 = ease((local - 0.8) / 0.5);
     ctx.save(); ctx.globalAlpha = k3;
-    const cta = `留言 ${input.code} 取得連結`; ctx.font = `700 54px ${FONT}`;
+    const cta = ctaText(input.code, en); ctx.font = `700 54px ${FONT}`;
     const cw = ctx.measureText(cta).width + 90;
     roundRect(ctx, W / 2 - cw / 2, H * 0.745, cw, 100, 50); ctx.fillStyle = p.fg; ctx.fill();
     ctx.fillStyle = p.bg1; ctx.fillText(cta, W / 2, H * 0.745 + 68);

@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useT } from "@/components/lang";
 
 export type LightboxImage = { url: string; label: string; kind?: string };
 
 /** 全畫面看圖：左右切換、下載、可選「設為主圖」 */
 export function Lightbox({ images, index, onClose, onSetHero, heroUrl }: { images: LightboxImage[]; index: number; onClose: () => void; onSetHero?: (url: string) => void; heroUrl?: string }) {
+  const t = useT();
   const [i, setI] = useState(index);
   const img = images[i];
   const prev = useCallback(() => setI((x) => (x - 1 + images.length) % images.length), [images.length]);
@@ -22,9 +24,9 @@ export function Lightbox({ images, index, onClose, onSetHero, heroUrl }: { image
       <div className="flex items-center justify-between px-4 py-3 text-sm" onClick={(e) => e.stopPropagation()}>
         <span>{img.label} <span className="text-white/50">{i + 1}／{images.length}</span></span>
         <div className="flex items-center gap-3">
-          {onSetHero && (heroUrl === img.url ? <span className="rounded-full bg-orange-500 px-2.5 py-1 text-xs">主圖</span> : <button onClick={() => onSetHero(img.url)} className="rounded-full bg-white/15 px-2.5 py-1 text-xs hover:bg-white/25">設為主圖</button>)}
-          <a href={img.url} download target="_blank" rel="noreferrer" className="rounded-full bg-white/15 px-2.5 py-1 text-xs hover:bg-white/25">下載</a>
-          <button onClick={onClose} className="rounded-full bg-white/15 px-2.5 py-1 text-xs hover:bg-white/25">關閉</button>
+          {onSetHero && (heroUrl === img.url ? <span className="rounded-full bg-orange-500 px-2.5 py-1 text-xs">{t("主圖", "Main image")}</span> : <button onClick={() => onSetHero(img.url)} className="rounded-full bg-white/15 px-2.5 py-1 text-xs hover:bg-white/25">{t("設為主圖", "Set as main")}</button>)}
+          <a href={img.url} download target="_blank" rel="noreferrer" className="rounded-full bg-white/15 px-2.5 py-1 text-xs hover:bg-white/25">{t("下載", "Download")}</a>
+          <button onClick={onClose} className="rounded-full bg-white/15 px-2.5 py-1 text-xs hover:bg-white/25">{t("關閉", "Close")}</button>
         </div>
       </div>
       <div className="relative flex flex-1 items-center justify-center px-12" onClick={(e) => e.stopPropagation()}>

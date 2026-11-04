@@ -63,6 +63,8 @@ export async function saveAppSettingsAction(_: unknown, formData: FormData) {
       siteName: String(formData.get("siteName") ?? "PanShop").trim() || "PanShop",
       announcement: String(formData.get("announcement") ?? "").trim(),
       featuredJobCode: String(formData.get("featuredJobCode") ?? "").trim(),
+      trialJobsPerIp: Number(formData.get("trialJobsPerIp") ?? 3),
+      dailyBudgetUsd: Number(formData.get("dailyBudgetUsd") ?? 20),
       commentModel: (String(formData.get("commentModel")) === "spark" ? "spark" : "spark-open"),
       voiceMode: (["tts", "seller", "none"].includes(String(formData.get("voiceMode"))) ? String(formData.get("voiceMode")) : "tts") as "tts" | "seller" | "none",
     });

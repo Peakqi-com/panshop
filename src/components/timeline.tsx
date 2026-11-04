@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { JobPayload, TrackRow, ItemRow } from "./job-view";
+import { useT } from "@/components/lang";
 
 /** 驚艷 2：播放頭走到哪，哪些商品在鏡頭內就亮起；同一件多段仍是一件 */
 export function Timeline({ job, tracks, items }: { job: JobPayload["job"]; tracks: TrackRow[]; items: ItemRow[] }) {
@@ -11,21 +12,22 @@ export function Timeline({ job, tracks, items }: { job: JobPayload["job"]; track
 
 /** 照片來源：每張照片下面列出切出的商品 */
 function PhotoStrip({ job, tracks, items }: { job: JobPayload["job"]; tracks: TrackRow[]; items: ItemRow[] }) {
+  const t = useT();
   const byTrack = new Map<string, ItemRow>();
   for (const it of items) for (const id of it.trackIds) byTrack.set(id, it);
   return (
     <section className="mt-10">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold">照片與切出的商品</h2>
-        <p className="text-sm text-stone-500">同一件在多張照片裡出現只算一件。</p>
+        <h2 className="text-lg font-semibold">{t("照片與切出的商品", "Photos and detected items")}</h2>
+        <p className="text-sm text-stone-500">{t("同一件在多張照片裡出現只算一件。", "An item that appears in several photos counts once.")}</p>
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {job.frames.map((f, i) => {
-          const here = tracks.filter((t) => Math.round(t.startSec) === i).map((t) => byTrack.get(t._id)).filter(Boolean) as ItemRow[];
+          const here = tracks.filter((tr) => Math.round(tr.startSec) === i).map((t) => byTrack.get(t._id)).filter(Boolean) as ItemRow[];
           return (
             <div key={f.url} className="card overflow-hidden">
               <img src={f.url} alt="" className="aspect-[4/3] w-full object-cover" />
-              <div className="flex flex-wrap gap-1 p-2 text-xs">{here.length ? here.map((it) => <span key={it._id} className="rounded-full bg-orange-100 px-2 py-0.5 font-mono text-orange-800">{it.code}</span>) : <span className="text-stone-400">沒有切到商品</span>}</div>
+              <div className="flex flex-wrap gap-1 p-2 text-xs">{here.length ? here.map((it) => <span key={it._id} className="rounded-full bg-orange-100 px-2 py-0.5 font-mono text-orange-800">{it.code}</span>) : <span className="text-stone-400">{t("沒有切到商品", "No items found")}</span>}</div>
             </div>
           );
         })}
@@ -36,6 +38,7 @@ function PhotoStrip({ job, tracks, items }: { job: JobPayload["job"]; tracks: Tr
 
 function VideoTimeline({ job, tracks, items }: { job: JobPayload["job"]; tracks: TrackRow[]; items: ItemRow[] }) {
   const video = useRef<HTMLVideoElement>(null);
+  const tr_ = useT();
   const [t, setT] = useState(0);
   const dur = job.video.durationSec ?? 1;
   const byTrack = new Map<string, ItemRow>();
@@ -61,8 +64,8 @@ function VideoTimeline({ job, tracks, items }: { job: JobPayload["job"]; tracks:
   return (
     <section className="mt-10">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold">時間軸</h2>
-        <p className="text-sm text-stone-500">拖動影片，看每件商品在鏡頭內的秒數。{multi > 0 && <span className="text-orange-700">{multi} 件出鏡又入鏡，仍只算一件。</span>}</p>
+        <h2 className="text-lg font-semibold">{tr_("時間軸", "Timeline")}</h2>
+        <p className="text-sm text-stone-500">{tr_("拖動影片，看每件商品在鏡頭內的秒數。", "Scrub the video to see when each item is on screen. ")}{multi > 0 && <span className="text-orange-700">{tr_(`${multi} 件出鏡又入鏡，仍只算一件。`, `${multi} left the frame and came back — still counted once.`)}</span>}</p>
       </div>
       <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_360px]">
         <div className="relative overflow-hidden rounded-xl bg-black">
@@ -81,7 +84,7 @@ function VideoTimeline({ job, tracks, items }: { job: JobPayload["job"]; tracks:
           </div>
         </div>
         <div className="card p-3">
-          <div className="flex items-baseline justify-between text-xs text-stone-500"><span>{t.toFixed(1)}s ／ {dur.toFixed(0)}s</span><span>鏡頭內 {liveItems.size} 件</span></div>
+          <div className="flex items-baseline justify-between text-xs text-stone-500"><span>{t.toFixed(1)}s ／ {dur.toFixed(0)}s</span><span>{tr_(`鏡頭內 ${liveItems.size} 件`, `${liveItems.size} in frame`)}</span></div>
           <ul className="mt-2 max-h-[420px] space-y-1 overflow-y-auto pr-1">
             {items.map((it) => {
               const segs = tracks.filter((tr) => it.trackIds.includes(tr._id)).sort((a, b) => a.startSec - b.startSec);
@@ -94,7 +97,7 @@ function VideoTimeline({ job, tracks, items }: { job: JobPayload["job"]; tracks:
                     {segs.map((s) => <span key={s._id} className={`absolute top-0 h-2.5 rounded-full ${on ? "bg-orange-500" : "bg-stone-300"}`} style={{ left: `${(s.startSec / dur) * 100}%`, width: `${Math.max(0.8, ((s.endSec - s.startSec) / dur) * 100)}%` }} />)}
                     <span className="absolute -top-0.5 h-3.5 w-0.5 bg-stone-800" style={{ left: `${(t / dur) * 100}%` }} />
                   </span>
-                  <span className="w-10 text-right text-[11px] text-stone-400">{segs.length > 1 ? `${segs.length} 段` : ""}</span>
+                  <span className="w-10 text-right text-[11px] text-stone-400">{segs.length > 1 ? tr_(`${segs.length} 段`, `${segs.length} clips`) : ""}</span>
                 </li>
               );
             })}

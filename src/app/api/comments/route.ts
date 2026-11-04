@@ -6,6 +6,7 @@ import { comments } from "@/repositories/comments";
 import { sparkOpenChat, extractJSON } from "@/lib/baseten";
 import { sparkJSON } from "@/lib/meta";
 import { settings } from "@/repositories/settings";
+import { isEn, priceLabel, noPriceText } from "@/lib/video/lang";
 
 const Body = z.object({ jobId: z.string(), text: z.string().min(1).max(300) });
 const Out = z.object({ intent: z.enum(["price", "stock", "spec", "buy", "other"]), itemCode: z.string().nullable(), reply: z.string() });
@@ -17,9 +18,14 @@ export async function POST(req: Request) {
   const job = ObjectId.isValid(p.data.jobId) ? await jobs.byId(p.data.jobId) : await jobs.byCode(p.data.jobId);
   if (!job?._id) return Response.json({ error: "not found" }, { status: 404 });
   const list = (await itemRepo.forJob(job._id)).filter((i) => i.status !== "deleted");
-  const menu = list.map((i) => `${i.code}｜${i.title}｜${i.color}｜${i.price != null ? `${i.currency} ${i.price}` : "價格私訊"}`).join("\n");
-  const system = `你是「${job.shopName || "本店"}」的小編。顧客在貼文留言，你要判斷意圖、對上商品代碼，並用繁體中文草擬一句親切的回覆（30 字內）。只能用下面清單裡的商品；對不上就 itemCode 為 null。只輸出 JSON：{"intent":"price|stock|spec|buy|other","itemCode":"A3 或 null","reply":"..."}`;
-  const user = `商品清單：\n${menu}\n\n顧客留言：「${p.data.text}」`;
+  const en = isEn(job);
+  const menu = en
+    ? list.map((i) => `${i.code}｜${i.title}｜${i.color}｜${i.price != null ? priceLabel(i.price, i.currency, true) : noPriceText(true)}`).join("\n")
+    : list.map((i) => `${i.code}｜${i.title}｜${i.color}｜${i.price != null ? `${i.currency} ${i.price}` : "價格私訊"}`).join("\n");
+  const system = en
+    ? `You are the social media manager of "${job.shopName || "our shop"}". A customer commented on a post. Classify the intent, match it to a product code, and draft one friendly reply (max 20 words) in the same language as the comment (English if unsure). Only use products from the list below; if none matches, itemCode is null. Output JSON only: {"intent":"price|stock|spec|buy|other","itemCode":"A3 or null","reply":"..."}`
+    : `你是「${job.shopName || "本店"}」的小編。顧客在貼文留言，你要判斷意圖、對上商品代碼，並用繁體中文草擬一句親切的回覆（30 字內）。只能用下面清單裡的商品；對不上就 itemCode 為 null。只輸出 JSON：{"intent":"price|stock|spec|buy|other","itemCode":"A3 或 null","reply":"..."}`;
+  const user = en ? `Products:\n${menu}\n\nCustomer comment: "${p.data.text}"` : `商品清單：\n${menu}\n\n顧客留言：「${p.data.text}」`;
   const t0 = Date.now();
   let out: z.infer<typeof Out> | null = null, model = "";
   const cfg = await settings.get();

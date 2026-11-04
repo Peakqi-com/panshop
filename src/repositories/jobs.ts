@@ -35,6 +35,15 @@ export const jobs = {
     if (opts.q) f.$or = [{ code: opts.q }, { shopName: { $regex: opts.q, $options: "i" } }];
     return (await col()).find(f).sort({ _id: -1 }).skip(opts.skip ?? 0).limit(opts.limit ?? 100).toArray();
   },
+  /** 公開試用限額：這個 IP 24 小時內建了幾個掃描 */
+  async countByIpSince(ipHash: string, since: Date) {
+    return (await col()).countDocuments({ ipHash, createdAt: { $gte: since } });
+  },
+  /** 全站 24 小時內的模型花費（以建立時間計） */
+  async costSince(since: Date) {
+    const r = await (await col()).aggregate<{ usd: number }>([{ $match: { createdAt: { $gte: since } } }, { $group: { _id: null, usd: { $sum: { $ifNull: ["$metrics.costUsd", 0] } } } }]).toArray();
+    return r[0]?.usd ?? 0;
+  },
   async remove(id: string | ObjectId) {
     const db = await getDb();
     const _id = new ObjectId(id);

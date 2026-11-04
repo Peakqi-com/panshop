@@ -3,6 +3,7 @@ import type { StageFn } from "@/lib/pipeline";
 import { sparkJSON } from "@/lib/meta";
 import { jobs } from "@/repositories/jobs";
 import { PIPE } from "@/lib/config";
+import { isEn, withLang } from "@/lib/video/lang";
 
 const Out = z.object({
   categories: z.array(z.object({
@@ -19,7 +20,7 @@ const discover: StageFn = async ({ job, jobId, log }) => {
     schema: Out,
     name: "categories",
     effort: PIPE.sparkEffort,
-    system: "你是電商上架助理。使用者對著桌上或架上的商品拍影片，你要列出影片裡『要賣的商品』的品類，供後續逐品類分割。",
+    system: withLang("你是電商上架助理。使用者對著桌上或架上的商品拍影片，你要列出影片裡『要賣的商品』的品類，供後續逐品類分割。", isEn(job)),
     parts: [
       { text: job.source === "photos" ? `這是賣家匯入的 ${job.frames.length} 張商品照片（可能一張一件，也可能一張多件）。` : `這是同一段影片均勻取出的 ${job.frames.length} 張影格。請列出畫面中要賣的商品品類，最多 ${PIPE.maxCategories} 類；忽略桌面、背景、手、手機、包裝紙等非商品。phrase 要是分割模型容易理解的通用英文名詞（例如 mug、book、handbag、sneaker、bottle），同一品類只列一次。` },
       ...job.frames.map((f) => ({ imageUrl: f.url })),

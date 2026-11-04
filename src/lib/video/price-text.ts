@@ -5,7 +5,7 @@ import type { Item } from "@/models/item";
 export function pickSentence(text: string, it: Pick<Item, "title" | "color" | "material" | "category" | "price">): { text: string; from: number; to: number } {
   const parts: { text: string; from: number; to: number }[] = [];
   let pos = 0;
-  for (const m of text.split(/(?<=[。！？!?；;])/)) { if (m.trim()) parts.push({ text: m.trim(), from: pos / text.length, to: (pos + m.length) / text.length }); pos += m.length; }
+  for (const m of text.split(/(?<=[。！？!?；;])|(?<=\.)(?=\s)/)) { if (m.trim()) parts.push({ text: m.trim(), from: pos / text.length, to: (pos + m.length) / text.length }); pos += m.length; }
   if (parts.length <= 1) return { text, from: 0, to: 1 };
   const keys = [it.title, it.color, it.material, it.category].filter(Boolean).flatMap((k) => k.split(/[\s，、]/)).filter((k) => k.length >= 2);
   const price = it.price != null ? String(it.price) : null;

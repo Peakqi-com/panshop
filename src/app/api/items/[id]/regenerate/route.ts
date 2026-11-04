@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { items } from "@/repositories/items";
 import { guardItem } from "@/lib/owner";
+import { checkTrial } from "@/lib/trial";
+import { getLang } from "@/lib/i18n-server";
 import { jobs } from "@/repositories/jobs";
 import { shootItem } from "@/lib/pipeline/stages/shoot";
 import { STYLES, type StyleId } from "@/lib/config";
@@ -18,6 +20,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const g = await guardItem(id);
   if (g instanceof Response) return g;
+  const limited = await checkTrial(await getLang(), { newJob: false });
+  if (limited) return Response.json({ error: limited.error }, { status: limited.status });
   const b = Body.safeParse(await req.json().catch(() => ({})));
   if (!b.success) return Response.json({ error: "參數不對" }, { status: 400 });
   const it = await items.byId(id);

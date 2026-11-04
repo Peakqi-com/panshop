@@ -12,7 +12,7 @@ export default function AdminHealth() {
           <li>Node {process.version}</li>
           <li>部署：{process.env.VERCEL ? `Vercel ${process.env.VERCEL_ENV ?? ""} ${process.env.VERCEL_REGION ?? ""}` : "本機"}</li>
           <li>對外網址：{process.env.NEXT_PUBLIC_SITE_URL ?? "未設定"}</li>
-          <li>上傳通行碼：{process.env.UPLOAD_PASSCODE ? "已啟用" : "未啟用"}</li>
+          <li>上傳通行碼：{process.env.UPLOAD_PASSCODE ? "已啟用" : "未啟用（公開試用，靠每日次數與花費上限保護）"}</li>
         </ul>
       </div>
     </div>

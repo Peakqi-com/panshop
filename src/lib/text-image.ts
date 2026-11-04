@@ -1,5 +1,6 @@
 import path from "node:path";
 import { createCanvas, GlobalFonts, loadImage, type SKRSContext2D } from "@napi-rs/canvas";
+import { wrapText } from "@/lib/video/wrap";
 
 /** 用 canvas 畫中文字卡，輸出 PNG 給 ffmpeg overlay；避免依賴雲端函式的 drawtext 與系統字型 */
 const FONT = "PanShopTC";
@@ -11,14 +12,7 @@ function ensureFont() {
 }
 
 function wrap(ctx: SKRSContext2D, text: string, maxWidth: number): string[] {
-  const lines: string[] = [];
-  let cur = "";
-  for (const ch of text) {
-    const next = cur + ch;
-    if (ctx.measureText(next).width > maxWidth && cur) { lines.push(cur); cur = ch; } else cur = next;
-  }
-  if (cur) lines.push(cur);
-  return lines.slice(0, 3);
+  return wrapText((s) => ctx.measureText(s).width, text, maxWidth, 3);
 }
 
 export type CoverSpec = { width: number; height: number; heroPng: Buffer; hook: string; price: string; bg?: string; fg?: string; accent?: string };

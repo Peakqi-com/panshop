@@ -5,6 +5,7 @@ import { sparkJSON, transcribe as asr } from "@/lib/meta";
 import { jobs } from "@/repositories/jobs";
 import type { TranscriptTurn } from "@/models/job";
 import { PIPE } from "@/lib/config";
+import { isEn, withLang } from "@/lib/video/lang";
 
 const Out = z.object({
   turns: z.array(z.object({
@@ -22,7 +23,7 @@ const transcribe: StageFn = async ({ job, jobId, log }) => {
   }
   const wav = Buffer.from(await (await fetch(job.video.audioUrl)).arrayBuffer());
   const keywords = job.categories.flatMap((c) => [c.name, c.phrase]);
-  const { result, usd } = await asr(wav, { keywords, languageBias: ["Chinese", "English"] });
+  const { result, usd } = await asr(wav, { keywords, languageBias: isEn(job) ? ["English", "Chinese"] : ["Chinese", "English"] });
   const toTW = OpenCC.Converter({ from: "cn", to: "twp" });
   const turns = (result.turns?.length ? result.turns : [{ turnId: 1, startMs: 0, endMs: result.audioDurationMs, transcript: result.transcript }])
     .map((t) => ({ startSec: t.startMs / 1000, endSec: t.endMs / 1000, text: toTW(t.transcript ?? "").trim() }))
@@ -37,7 +38,7 @@ const transcribe: StageFn = async ({ job, jobId, log }) => {
     schema: Out,
     name: "speech_entities",
     effort: PIPE.sparkEffort,
-    system: "你是電商上架助理。賣家邊拍商品邊口述品名與價格。從逐句轉寫中抽出商品名稱與價格數字。價格可能說成「三百五」「1980」「兩千」，一律換成阿拉伯數字；「一組」「一個」不是價格。",
+    system: withLang("你是電商上架助理。賣家邊拍商品邊口述品名與價格。從逐句轉寫中抽出商品名稱與價格數字。價格可能說成「三百五」「1980」「兩千」，一律換成阿拉伯數字；「一組」「一個」不是價格。", isEn(job)),
     parts: [{ text: `品類：${job.categories.map((c) => c.name).join("、")}。逐句：\n${turns.map((t, i) => `${i}. [${t.startSec.toFixed(1)}s] ${t.text}`).join("\n")}` }],
   });
   const full: TranscriptTurn[] = turns.map((t, i) => {

@@ -12,6 +12,8 @@ import { ffmpegPath, run } from "@/lib/ffmpeg";
 import { generateMusic } from "./music";
 import { PALETTES } from "./ad";
 import { knockOutBackground } from "./knockout";
+import { wrapText } from "./wrap";
+import { priceLabel, noPriceText } from "./lang";
 
 export const W = 1080, H = 1920, FPS = 30;
 const FONT = "PanShopTC";
@@ -25,15 +27,13 @@ export type SceneSpec = {
 export type AdV2Input = {
   code: string; title: string; price: number | null; currency: string; storeName: string; style: string;
   hook: string; cta: string; cutoutPath?: string; scenes: SceneSpec[]; musicPath?: string; workDir: string;
+  en?: boolean;   // 英文掃描：價格寫法與無價格字樣用英文
 };
 
 const ease = (x: number) => 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), 3);
 const easeInOut = (x: number) => { const t = Math.max(0, Math.min(1, x)); return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
 function wrap(ctx: SKRSContext2D, text: string, maxWidth: number, maxLines = 3): string[] {
-  const lines: string[] = []; let cur = "";
-  for (const ch of text) { const next = cur + ch; if (ctx.measureText(next).width > maxWidth && cur) { lines.push(cur); cur = ch; } else cur = next; }
-  if (cur) lines.push(cur);
-  return lines.slice(0, maxLines);
+  return wrapText((s) => ctx.measureText(s).width, text, maxWidth, maxLines);
 }
 function rr(ctx: SKRSContext2D, x: number, y: number, w: number, h: number, r: number) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.closePath(); }
 
@@ -151,7 +151,7 @@ export async function renderAdV2(input: AdV2Input): Promise<{ mp4: string; cover
     ctx.fillStyle = onPhoto ? "#fff" : p.fg; ctx.font = `500 50px ${FONT}`; wrap(ctx, input.title, W - 200, 2).forEach((l, i) => ctx.fillText(l, W / 2, H * 0.60 + i * 62));
     const shown = input.price != null ? Math.round(input.price * ease(local / 1.0)) : null;
     ctx.fillStyle = onPhoto ? "#fff" : p.accent; ctx.font = `700 124px ${FONT}`;
-    ctx.fillText(shown != null ? `${input.currency} ${shown.toLocaleString()}` : "價格請私訊", W / 2, H * 0.73);
+    ctx.fillText(shown != null ? priceLabel(shown, input.currency, !!input.en) : noPriceText(!!input.en), W / 2, H * 0.73);
     const k2 = ease((local - 0.6) / 0.5); ctx.globalAlpha = k2;
     ctx.font = `700 50px ${FONT}`; const cw = ctx.measureText(input.cta).width + 90;
     rr(ctx, W / 2 - cw / 2, H * 0.77, cw, 94, 47); ctx.fillStyle = onPhoto ? "#fff" : p.fg; ctx.fill(); ctx.fillStyle = onPhoto ? "#1c1917" : p.bg1; ctx.fillText(input.cta, W / 2, H * 0.77 + 64);

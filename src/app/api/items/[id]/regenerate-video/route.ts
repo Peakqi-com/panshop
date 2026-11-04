@@ -1,5 +1,7 @@
 import { items } from "@/repositories/items";
 import { guardItem } from "@/lib/owner";
+import { checkTrial } from "@/lib/trial";
+import { getLang } from "@/lib/i18n-server";
 import { jobs } from "@/repositories/jobs";
 import { assets } from "@/repositories/assets";
 import { tracks } from "@/repositories/tracks";
@@ -12,6 +14,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const g = await guardItem(id);
   if (g instanceof Response) return g;
+  const limited = await checkTrial(await getLang(), { newJob: false });
+  if (limited) return Response.json({ error: limited.error }, { status: limited.status });
   const it = await items.byId(id);
   if (!it?._id) return Response.json({ error: "not found" }, { status: 404 });
   const [job, a, trs] = await Promise.all([jobs.byId(it.jobId), assets.byItem(it._id), tracks.forJob(it.jobId)]);

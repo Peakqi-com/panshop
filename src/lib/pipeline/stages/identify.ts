@@ -5,6 +5,7 @@ import { jobs } from "@/repositories/jobs";
 import { items as itemRepo } from "@/repositories/items";
 import { tracks as trackRepo } from "@/repositories/tracks";
 import { PIPE } from "@/lib/config";
+import { isEn, withLang } from "@/lib/video/lang";
 import type { ObjectId } from "mongodb";
 
 const Out = z.object({
@@ -38,7 +39,7 @@ const identify: StageFn = async ({ job, jobId, log }) => {
       schema: Out,
       name: "product",
       effort: PIPE.sparkEffort,
-      system: `你是電商上架助理，替台灣的小賣家寫商品資料。輸出繁體中文（Google 分類除外）。品名以畫面為準、口述為輔；價格只能來自口述，畫面上的價格標籤也算口述證據。幣別 ${job.currency}。`,
+      system: withLang(`你是電商上架助理，替台灣的小賣家寫商品資料。輸出繁體中文（Google 分類除外）。品名以畫面為準、口述為輔；價格只能來自口述，畫面上的價格標籤也算口述證據。幣別 ${job.currency}。`, isEn(job)),
       parts: [
         { text: `商品編號 ${it.code}，品類「${it.category}」。以下是這件商品的裁圖（同一件、不同角度），以及它入鏡時段的口述：\n${speechText}\n${candidatePrices.length ? `口述時段內出現的價格候選：${candidatePrices.join("、")}。若其中一個價格緊跟著描述這件商品的句子，就採用它。` : ""}` },
         ...it.primaryCropUrls.map((u) => ({ imageUrl: u })),
